@@ -1,0 +1,30 @@
+# NuevaMente — dependencias del MVP
+pydantic>=2.7
+python-dotenv>=1.0
+
+# Orquestacion RAG
+langchain>=0.3
+langgraph>=0.2
+langchain-community>=0.3
+
+# Proveedores de LLM (instalar solo los que se usen)
+langchain-google-genai>=2.0      # Gemini
+langchain-ollama>=0.2            # Ollama local: LLM + embeddings
+# langchain-openai>=0.2          # DeepSeek y Kimi (API compatible con OpenAI)
+# langchain-anthropic>=0.3       # Claude
+
+# Vector store
+chromadb>=0.5
+langchain-chroma>=0.1
+
+# Ingesta
+pypdf>=5.0
+
+# Interfaz
+streamlit>=1.38
+
+# Persistencia obligatoria
+oci>=2.130
+
+# Desarrollo
+pytest>=8.0

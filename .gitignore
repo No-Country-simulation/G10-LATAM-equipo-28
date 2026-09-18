@@ -1,0 +1,31 @@
+# =============================================================================
+# NuevaMente — Riesgo R-07: credenciales versionadas en GitHub publico.
+# Este archivo debe existir ANTES del primer commit.
+# =============================================================================
+
+# --- Secretos: NUNCA versionar ---
+.env
+.env.local
+.env.*.local
+*.pem
+oci_api_key*
+.oci/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# --- Datos generados ---
+data/vector_store/
+data/uploads/
+*.log
+
+# --- Sistema ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
