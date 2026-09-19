@@ -104,3 +104,35 @@ def test_fragmento_prompt_preserva_fidelidad_a_fuente():
 
     assert "no autorizan a agregar información" in prompt
     assert "respaldada por la fuente" in prompt
+
+
+def test_preparar_explicacion_pedagogica():
+    from src.pedagogia import preparar_explicacion_pedagogica
+
+    salida = preparar_explicacion_pedagogica(
+        PerfilDestinatario.LIDER_TECNICO,
+        NivelDetalle.ESTANDAR,
+    )
+
+    assert salida["bloom"] == "Evaluar"
+    assert salida["andamiaje"] == "Bajo"
+    assert salida["registro"] == "Técnico-estratégico"
+    assert salida["foco"] == "Criterio de decisión"
+    assert salida["verbos_recomendados"] == [
+        "evaluar",
+        "comparar",
+        "justificar",
+    ]
+    assert "INSTRUCCIONES PEDAGÓGICAS" in salida["instrucciones_redactor"]
+
+
+def test_salida_pedagogica_es_independiente_de_servicios_externos():
+    from src.pedagogia import preparar_explicacion_pedagogica
+
+    salida = preparar_explicacion_pedagogica(
+        PerfilDestinatario.PRINCIPIANTE,
+        NivelDetalle.DIDACTICO,
+    )
+
+    assert salida["bloom"] == "Entender"
+    assert "respaldada por la fuente" in salida["instrucciones_redactor"]
