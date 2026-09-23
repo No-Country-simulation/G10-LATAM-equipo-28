@@ -2,7 +2,7 @@
 
 ## Propósito y evolución arquitectónica
 
-La capa `src/pedagogia/` construye una `spec_pedagogica` determinística a partir del perfil destinatario y del nivel de detalle recibido. La especificación orienta cómo redactar el contenido educativo; la capa no genera directamente ese contenido.
+La capa `src/pedagogia/` construye una `spec_pedagogica` determinística a partir del perfil destinatario. `nivel_detalle` forma parte de la interfaz recibida, pero actualmente no modifica el mapping. La especificación orienta cómo redactar el contenido educativo; la capa no genera directamente ese contenido.
 
 ### Evolución arquitectónica
 

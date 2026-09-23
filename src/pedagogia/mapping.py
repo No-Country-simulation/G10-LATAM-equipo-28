@@ -20,17 +20,6 @@ class EspecificacionPedagogica:
     foco: str
     verbos: tuple[str, ...]
 
-    @property
-    def verbos_recomendados(self) -> tuple[str, ...]:
-        """
-        Alias temporal de compatibilidad.
-
-        Permite que el código existente que todavía utiliza
-        `verbos_recomendados` continúe funcionando mientras se migra
-        al nombre canónico `verbos`.
-        """
-        return self.verbos
-
 
 _MAPEO_PERFILES: dict[PerfilDestinatario, EspecificacionPedagogica] = {
     PerfilDestinatario.PRINCIPIANTE: EspecificacionPedagogica(

@@ -60,7 +60,7 @@ def test_mapeo_pedagogico_por_perfil(
     assert spec.andamiaje == andamiaje
     assert spec.registro == registro
     assert spec.foco == foco
-    assert spec.verbos_recomendados
+    assert spec.verbos
 
 
 def test_mapeo_pedagogico_es_deterministico():
@@ -125,11 +125,36 @@ def test_preparar_explicacion_pedagogica():
     ]
 
 
-def test_salida_pedagogica_cumple_contrato_publico():
+@pytest.mark.parametrize(
+    ("perfil", "bloom", "verbos"),
+    [
+        (
+            PerfilDestinatario.PRINCIPIANTE,
+            "Entender",
+            ["explicar", "identificar", "describir"],
+        ),
+        (
+            PerfilDestinatario.DESARROLLADOR,
+            "Aplicar",
+            ["aplicar", "implementar", "demostrar"],
+        ),
+        (
+            PerfilDestinatario.LIDER_TECNICO,
+            "Evaluar",
+            ["evaluar", "comparar", "justificar"],
+        ),
+        (
+            PerfilDestinatario.GESTOR_EJECUTIVO,
+            "Entender",
+            ["explicar", "relacionar", "resumir"],
+        ),
+    ],
+)
+def test_salida_pedagogica_cumple_contrato_publico(perfil, bloom, verbos):
     from src.pedagogia import preparar_explicacion_pedagogica
 
     salida = preparar_explicacion_pedagogica(
-        PerfilDestinatario.PRINCIPIANTE,
+        perfil,
         NivelDetalle.DIDACTICO,
     )
 
@@ -140,11 +165,7 @@ def test_salida_pedagogica_cumple_contrato_publico():
         "foco",
         "verbos",
     }
-    assert salida["bloom"] == "Entender"
-    assert salida["verbos"] == [
-        "explicar",
-        "identificar",
-        "describir",
-    ]
+    assert salida["bloom"] == bloom
+    assert salida["verbos"] == verbos
     assert "verbos_recomendados" not in salida
     assert "instrucciones_redactor" not in salida

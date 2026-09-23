@@ -10,7 +10,7 @@ def construir_fragmento_prompt_pedagogico(
     Convierte una especificación pedagógica en instrucciones explícitas
     para el Redactor Pedagógico.
     """
-    verbos = ", ".join(spec.verbos_recomendados)
+    verbos = ", ".join(spec.verbos)
 
     return (
         "INSTRUCCIONES PEDAGÓGICAS:\n"
