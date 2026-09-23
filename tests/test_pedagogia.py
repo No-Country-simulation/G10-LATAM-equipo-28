@@ -118,15 +118,14 @@ def test_preparar_explicacion_pedagogica():
     assert salida["andamiaje"] == "Bajo"
     assert salida["registro"] == "Técnico-estratégico"
     assert salida["foco"] == "Criterio de decisión"
-    assert salida["verbos_recomendados"] == [
+    assert salida["verbos"] == [
         "evaluar",
         "comparar",
         "justificar",
     ]
-    assert "INSTRUCCIONES PEDAGÓGICAS" in salida["instrucciones_redactor"]
 
 
-def test_salida_pedagogica_es_independiente_de_servicios_externos():
+def test_salida_pedagogica_cumple_contrato_publico():
     from src.pedagogia import preparar_explicacion_pedagogica
 
     salida = preparar_explicacion_pedagogica(
@@ -134,5 +133,18 @@ def test_salida_pedagogica_es_independiente_de_servicios_externos():
         NivelDetalle.DIDACTICO,
     )
 
+    assert set(salida) == {
+        "bloom",
+        "andamiaje",
+        "registro",
+        "foco",
+        "verbos",
+    }
     assert salida["bloom"] == "Entender"
-    assert "respaldada por la fuente" in salida["instrucciones_redactor"]
+    assert salida["verbos"] == [
+        "explicar",
+        "identificar",
+        "describir",
+    ]
+    assert "verbos_recomendados" not in salida
+    assert "instrucciones_redactor" not in salida

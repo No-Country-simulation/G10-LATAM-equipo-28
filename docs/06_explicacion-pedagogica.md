@@ -1,94 +1,67 @@
-# Nodo `explicacion_pedagogica`
+# Capa de adaptación pedagógica
 
-## Objetivo
+## Propósito y evolución arquitectónica
 
-Agregar una etapa pedagógica al flujo de NuevaMente antes del Redactor Pedagógico.
+La capa `src/pedagogia/` construye una `spec_pedagogica` determinística a partir del perfil destinatario y del nivel de detalle recibido. La especificación orienta cómo redactar el contenido educativo; la capa no genera directamente ese contenido.
 
-Su responsabilidad será transformar el perfil del destinatario y el nivel de detalle en instrucciones pedagógicas concretas que el Redactor pueda utilizar para adaptar el contenido.
+### Evolución arquitectónica
 
-## Posición prevista en el flujo
+Inicialmente se contempló `explicacion_pedagogica` como un nodo LangGraph independiente entre el Investigador RAG y el Redactor Pedagógico. El 5TO SPEC DE CAMBIOS consolidó la arquitectura del flujo y definió cinco agentes LLM. En el diseño vigente, la lógica pedagógica se conserva como un helper determinístico consumido por el Redactor Pedagógico. Esta evolución mantiene el trabajo pedagógico y lo integra en la responsabilidad de redacción, sin agregar un sexto agente ni un nodo adicional al grafo.
 
-Investigador RAG  
-→ `explicacion_pedagogica`  
-→ Redactor Pedagógico  
-→ Crítico / Revisor
+## Relación con la arquitectura vigente
 
-La conexión definitiva se adaptará al `AgentState` y al grafo oficial cuando estén disponibles en `main`.
+Los cinco agentes LLM declarados por el 5TO SPEC son:
 
-## Entradas previstas
+1. Supervisor
+2. Investigador RAG
+3. Redactor Pedagógico
+4. Crítico/Revisor
+5. Modificador
 
-- `perfil_destinatario`
-- `nivel_detalle`
-- `formato_salida`
-- `nicho_sector`
+`src/pedagogia/` no es un agente y no añade un nodo al grafo. Su especificación será consumida por `agente_redactor_pedagogico.py`.
 
-## Salida prevista
+El Redactor Pedagógico genera `contenido_adaptado` utilizando los chunks fuente y el sub-esquema correspondiente al formato de salida. Sus instrucciones mantienen la fidelidad a la fuente: la adaptación pedagógica no autoriza a agregar información sin respaldo en los chunks.
 
-Una especificación pedagógica que contenga, al menos:
+El Crítico/Revisor valida el formato, los typos y la fidelidad según el 5TO SPEC.
 
-- nivel de Bloom
-- nivel de andamiaje
-- registro lingüístico
-- foco pedagógico
-- verbos o instrucciones recomendadas para el Redactor
+## Contrato público
+
+La salida actual de `preparar_explicacion_pedagogica()` contiene exactamente estos campos:
+
+```python
+{
+    "bloom": str,
+    "andamiaje": str,
+    "registro": str,
+    "foco": str,
+    "verbos": list[str],
+}
+```
+
+Los verbos recomendados orientan la redacción y se exponen bajo el nombre canónico `verbos`.
 
 ## Mapeo pedagógico base
 
-### Principiante / Transición de carrera
+| Perfil | Bloom | Andamiaje | Registro | Foco | Verbos |
+|---|---|---|---|---|---|
+| Principiante | Entender | Alto | Cotidiano | Comprensión conceptual | explicar, identificar, describir |
+| Desarrollador | Aplicar | Medio | Técnico | Ejecución práctica | aplicar, implementar, demostrar |
+| Líder técnico | Evaluar | Bajo | Técnico-estratégico | Criterio de decisión | evaluar, comparar, justificar |
+| Gestor ejecutivo | Entender | Alto | Ejecutivo | Impacto en negocio | explicar, relacionar, resumir |
 
-- Bloom: Entender
-- Andamiaje: Alto
-- Registro: Cotidiano
-- Foco: Comprensión conceptual
+## Interfaz y nivel de detalle
 
-### Desarrollador Junior / Semi Senior
+`nivel_detalle` forma parte de la interfaz de `construir_especificacion_pedagogica(perfil, nivel_detalle)`. Actualmente no modifica el mapping: todavía no existe una regla canónica acordada para cambiar Bloom, andamiaje, registro, foco o verbos según ese valor. La función conserva el parámetro sin inventar una fórmula.
 
-- Bloom: Aplicar
-- Andamiaje: Medio
-- Registro: Técnico
-- Foco: Ejecución práctica
+## Límites y pruebas
 
-### Líder Técnico / Arquitecto
+La capa:
 
-- Bloom: Evaluar
-- Andamiaje: Bajo
-- Registro: Técnico-estratégico
-- Foco: Criterio de decisión
+- es determinística para las mismas entradas;
+- no genera el paquete ni el contenido educativo final;
+- no depende de OCI ni de Chroma;
+- no depende de LangGraph;
+- no depende directamente de un proveedor LLM;
+- debe poder probarse de manera aislada.
 
-### Gestor / Ejecutivo no técnico
-
-- Bloom: Entender
-- Andamiaje: Alto
-- Registro: Ejecutivo
-- Foco: Impacto en negocio
-
-## Responsabilidad del nodo
-
-El nodo no debe generar directamente el paquete educativo final.
-
-Su función será preparar una instrucción pedagógica estructurada para que el Redactor Pedagógico sepa:
-
-1. qué nivel cognitivo utilizar;
-2. cuánto apoyo entregar;
-3. qué lenguaje utilizar;
-4. en qué aspecto enfocar la explicación.
-
-## Criterios iniciales de aceptación
-
-1. No genera el contenido educativo final.
-2. Produce instrucciones pedagógicas para el Redactor.
-3. Para la misma entrada debe producir la misma especificación pedagógica.
-4. No consulta directamente OCI.
-5. No consulta directamente ChromaDB.
-6. Debe poder probarse de manera aislada.
-7. Debe respetar los valores definidos por los contratos actuales.
-8. La implementación definitiva deberá adaptarse al `AgentState` oficial del equipo.
-
-## Pendientes de integración
-
-- Confirmar la estructura definitiva de `AgentState`.
-- Confirmar el campo donde se almacenará la especificación pedagógica.
-- Implementar el nodo en Python.
-- Integrarlo en `grafo.py`.
-- Conectarlo antes del Redactor Pedagógico.
-- Agregar pruebas unitarias y de integración.
+Las instrucciones del Redactor mantienen la restricción de fidelidad a la fuente. Las pruebas de `src/pedagogia/` verifican por separado el mapping, el fragmento de prompt y el contrato público de cinco campos.

@@ -3,7 +3,6 @@ from __future__ import annotations
 from src.contracts import NivelDetalle, PerfilDestinatario
 
 from .mapping import construir_especificacion_pedagogica
-from .prompts import construir_fragmento_prompt_pedagogico
 
 
 def preparar_explicacion_pedagogica(
@@ -11,10 +10,14 @@ def preparar_explicacion_pedagogica(
     nivel_detalle: NivelDetalle,
 ) -> dict[str, object]:
     """
-    Construye la salida pedagógica que posteriormente consumirá
-    el nodo LangGraph `explicacion_pedagogica`.
+    Construye la especificación pedagógica pública que consumirá
+    posteriormente la capa de orquestación.
 
-    Esta función no depende de AgentState ni del grafo.
+    Esta función es determinística y no depende de AgentState,
+    LangGraph, proveedores LLM ni servicios externos.
+
+    La salida respeta el contrato pedagógico acordado:
+    bloom, andamiaje, registro, foco y verbos.
     """
     spec = construir_especificacion_pedagogica(
         perfil=perfil,
@@ -26,6 +29,5 @@ def preparar_explicacion_pedagogica(
         "andamiaje": spec.andamiaje,
         "registro": spec.registro,
         "foco": spec.foco,
-        "verbos_recomendados": list(spec.verbos_recomendados),
-        "instrucciones_redactor": construir_fragmento_prompt_pedagogico(spec),
+        "verbos": list(spec.verbos),
     }
