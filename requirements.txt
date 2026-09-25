@@ -1,30 +1,36 @@
-# NuevaMente — dependencias del MVP
-pydantic>=2.7
-python-dotenv>=1.0
+# --- Orquestación de agentes 
+langgraph==1.2.11
+langgraph-checkpoint-sqlite>=1.0.0
+langchain-core==1.6.3
+langchain-classic==1.0.8
+langchain-openai==1.6.2
+langchain-text-splitters>=1.0.0
 
-# Orquestacion RAG
-langchain>=0.3
-langgraph>=0.2
-langchain-community>=0.3
+# --- MCP (cliente + servidor propio de Oracle Object Storage) ---
+mcp==1.30.0
+langchain-mcp-adapters==0.3.2
 
-# Proveedores de LLM (instalar solo los que se usen)
-langchain-google-genai>=2.0      # Gemini
-langchain-ollama>=0.2            # Ollama local: LLM + embeddings
-# langchain-openai>=0.2          # DeepSeek y Kimi (API compatible con OpenAI)
-# langchain-anthropic>=0.3       # Claude
+# --- RAG / vectorstore (versiones fijas, ya validadas) ---
+langchain-chroma==1.1.0
+chromadb==1.5.9
+langchain-huggingface>=0.1.0
 
-# Vector store
-chromadb>=0.5
-langchain-chroma>=0.1
+# --- LLM (usado por llm_client.py para estimar tokens en el rate limiter) ---
+tiktoken>=0.8.0
 
-# Ingesta
-pypdf>=5.0
+# --- Oracle Cloud (SDK oficial, nuevo en este proyecto) ---
+oci>=2.129.0
 
-# Interfaz
-streamlit>=1.38
+# --- Extracción de documentos ---
+pypdf>=5.0.0
 
-# Persistencia obligatoria
-oci>=2.130
+# --- Exportación PDF / Markdown ---
+reportlab>=4.2.0
 
-# Desarrollo
-pytest>=8.0
+# --- Interfaz ---
+streamlit>=1.38.0
+
+# --- Config / validación ---
+python-dotenv==1.2.3
+pydantic==2.13.5
+
