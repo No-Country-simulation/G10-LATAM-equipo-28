@@ -10,14 +10,17 @@ instancia esté en la Dynamic Group "nuevamente-instance-dg" con la Policy
 correspondiente sobre el bucket configurado.
 
 Organización del bucket por prefijos:
-  - fuentes/    -> documentos que suben o eligen los usuarios (Flujo A/B)
-  - generados/  -> outputs del Redactor/Revisor/Modificador
+  - fuentes/               -> documentos que suben o eligen los usuarios (Flujo A/B)
+  - generados/              -> outputs del Redactor/Revisor/Modificador (legacy)
+  - generados/formateados/  -> outputs del pipeline, ruta fija usada por el
+                                Buscador de Documentos (5to spec)
 
 Tools expuestas:
   - listar_documentos_fuente()
   - subir_documento_fuente(objeto_id, contenido_base64)
   - descargar_documento(objeto_id)
   - guardar_resultado(objeto_id, contenido)
+  - guardar_resultado_formateado(nombre_archivo, contenido)
 """
 
 import base64
@@ -224,6 +227,49 @@ def guardar_resultado(objeto_id: str, contenido: dict) -> dict:
     }
 
 
+@server.tool()
+def guardar_resultado_formateado(nombre_archivo: str, contenido: dict) -> dict:
+    """
+    Guarda el resultado generado por el pipeline (JSON del Redactor/Revisor/
+    Modificador) bajo la ruta fija generados/formateados/ del bucket,
+    usando el nombre del archivo fuente original como identificador.
+
+    Agregada como función independiente de guardar_resultado() -- no la
+    reemplaza ni modifica su comportamiento; conviven las dos. El nodo
+    Guardado del grafo (5to spec de NuevaMente) llama a esta.
+
+    Args:
+        nombre_archivo: nombre del archivo fuente original (sin prefijo),
+            ej. "manual_vcn.pdf". Se usa tal cual dentro de
+            generados/formateados/. Cada modificación del Agente
+            Modificador debe pasar un nombre nuevo (versión), nunca
+            reusar uno existente, mismo criterio que guardar_resultado().
+        contenido: el dict serializable a JSON con el resultado completo.
+
+    Devuelve: {bucket, objeto_id, status_upload} — literalmente el bloque
+    almacenamiento_oci del esquema de salida.
+    """
+    import json
+
+    client, namespace = _get_client()
+
+    objeto_id_completo = f"{PREFIJO_GENERADOS}formateados/{nombre_archivo}"
+    contenido_json = json.dumps(contenido, ensure_ascii=False, indent=2)
+
+    client.put_object(
+        namespace_name=namespace,
+        bucket_name=BUCKET_NAME,
+        object_name=objeto_id_completo,
+        put_object_body=contenido_json.encode("utf-8"),
+    )
+
+    return {
+        "bucket": BUCKET_NAME,
+        "objeto_id": objeto_id_completo,
+        "status_upload": "completado",
+    }
+
+
 # --------------------------------------------------------------------------
 # Prueba manual aislada
 # --------------------------------------------------------------------------
@@ -264,6 +310,13 @@ def _prueba_conexion():
         {"status": "exito", "nota": "esto es una prueba"},
     )
     print("   ->", resultado_guardado)
+
+    print("\n5. Guardando resultado de prueba en generados/formateados/...")
+    resultado_guardado_formateado = guardar_resultado_formateado(
+        "prueba-resultado-formateado.json",
+        {"status": "exito", "nota": "esto es una prueba del 5to spec"},
+    )
+    print("   ->", resultado_guardado_formateado)
 
     print("\n=== Prueba completa OK ===")
 
