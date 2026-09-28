@@ -6,12 +6,14 @@ tools para LangChain + interpretación de resultados. El Buscador de
 Documentos y el resto de los agentes de NuevaMente importan estas
 funciones en vez de reimplementar la conexión cada uno.
 
-Mismo patrón que Cliente_agemte.py, 
+Mismo patrón que Cliente_agemte.py de MCPMULTIAgentsResearch, adaptado
 al servidor de Object Storage de este proyecto.
 """
 
 import asyncio
 import logging
+import os
+import anyio  # <- agregar esta línea
 from contextlib import asynccontextmanager
 
 from mcp import ClientSession, StdioServerParameters
@@ -20,24 +22,23 @@ from langchain_mcp_adapters.tools import load_mcp_tools
 
 logger = logging.getLogger("nuevamente.cliente_mcp")
 
-MAX_REINTENTOS_CONEXION = 2  # 1 intento inicial + 2 reintentos = 3 intentos totales
-
+MAX_REINTENTOS_CONEXION = 4  # antes 2 -- con una falla intermitente, más intentos baratos (30s c/u) es mejor que pocos con más timeout cada uno
 
 @asynccontextmanager
 async def conectar_mcp():
-    """
-    Conecta con el servidor MCP de Object Storage (servidor_objeStorageOracle.py)
-    vía stdio y entrega una ClientSession ya inicializada, lista para usar.
-    """
+    print(f"[MCP] Abriendo subproceso...", flush=True)
     parametros_servidor = StdioServerParameters(
         command="python",
         args=["servidor_objeStorageOracle.py"],
+        env=os.environ.copy(),
     )
 
     async with stdio_client(parametros_servidor) as (lectura, escritura):
         async with ClientSession(lectura, escritura) as sesion:
             await sesion.initialize()
+            print(f"[MCP] Sesión inicializada", flush=True)
             yield sesion
+    print(f"[MCP] Subproceso cerrado", flush=True)  # temporal        
 
 
 async def obtener_tools_langchain(sesion: ClientSession):
@@ -59,19 +60,51 @@ def extraer_texto_resultado(resultado_tool) -> str:
             return primero["text"]
     return str(resultado_tool)
 
+def extraer_lista_resultado(resultado_tool) -> list:
+    """
+    Para tools MCP que devuelven una lista de dicts (ej. listar_documentos_fuente).
+    A diferencia de extraer_texto_resultado(), acá NO alcanza con leer el primer
+    content block: cuando la lista tiene un único elemento, MCP la serializa como
+    UN bloque con el objeto suelto (sin corchetes de lista); cuando tiene varios,
+    puede venir como un solo bloque con el array completo, o como un bloque por
+    item -- esta función cubre ambos casos y siempre devuelve una lista de dicts.
+    """
+    import json
+
+    if not isinstance(resultado_tool, list):
+        return []
+
+    items = []
+    for bloque in resultado_tool:
+        if isinstance(bloque, dict) and "text" in bloque:
+            parseado = json.loads(bloque["text"])
+            if isinstance(parseado, list):
+                items.extend(parseado)
+            else:
+                items.append(parseado)
+    return items
+
 
 async def con_reintento_mcp(coro_factory, max_reintentos: int = MAX_REINTENTOS_CONEXION):
     """
     Reintenta una operación completa contra el servidor MCP (conexión +
     trabajo) ante fallos transitorios -- ej. el subproceso de
-    servidor_objeStorageOracle.py tarda en levantar o hay un hiccup de stdio.
+    servidor_objeStorageOracle.py tarda en levantar, o hay un hiccup de stdio.
+
+    IMPORTANTE (evidencia de pruebas repetidas en Windows): envolver la
+    llamada en un cancel scope (asyncio.wait_for o anyio.fail_after)
+    provoca que se cuelgue de forma consistente -- interfiere con el
+    manejo interno de I/O de anyio sobre stdio en el ProactorEventLoop de
+    Windows. Por eso esta función NO usa timeout, a pesar de ser lo
+    intuitivo -- la evidencia de 6/6 corridas sin wrapper funcionando vs.
+    6/6 con wrapper colgándose es más fuerte que la intuición de diseño.
+    Revisar si esto sigue siendo necesario al migrar a Linux (producción).
 
     coro_factory: función SIN argumentos que, al llamarla, devuelve la
-    corutina completa a ejecutar (típicamente envuelve el
-    `async with conectar_mcp() as sesion: ...` entero del nodo que la usa).
+    corutina completa a ejecutar.
     """
     ultimo_error: Exception | None = None
-    for intento in range(1, max_reintentos + 2):  # +2: 1 inicial + los reintentos
+    for intento in range(1, max_reintentos + 2):
         try:
             return await coro_factory()
         except Exception as e:
