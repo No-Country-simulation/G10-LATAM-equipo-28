@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -16,9 +18,16 @@ from src.agentes.agente_redactor_pedagogico import (  # noqa: E402
     RespuestaGenerador,
     redactar_pedagogicamente,
 )
-from src.contracts import FormatoSalida, SolicitudAdaptacion  # noqa: E402
+from src.contracts import (  # noqa: E402
+    FormatoSalida,
+    MODELO_ITEM_POR_FORMATO,
+    SolicitudAdaptacion,
+)
 from src.errores import ErrorFormatoNoDisponible, ErrorLLM, ErrorSalidaInvalida  # noqa: E402
-from src.prompts.redactor_pedagogico import construir_prompt_redactor  # noqa: E402
+from src.prompts.redactor_pedagogico import (  # noqa: E402
+    _EJEMPLOS_ITEM_POR_FORMATO,
+    construir_prompt_redactor,
+)
 
 
 SOLICITUD_BASE = {
@@ -32,7 +41,13 @@ SOLICITUD_BASE = {
     "nicho_sector": "General",
     "nivel_detalle": "Didactico",
 }
-CHUNKS = [{"id": "chunk-1", "texto": "Una VCN es una red privada y personalizable en la nube."}]
+CHUNKS = [
+    {"id": "chunk-1", "texto": "Una VCN es una red privada y personalizable en la nube."},
+    {"id": "chunk-2", "texto": "Las subredes organizan los recursos de una VCN."},
+    {"id": "chunk-3", "texto": "Las reglas de seguridad controlan el tráfico de entrada y salida."},
+    {"id": "chunk-4", "texto": "La tabla de rutas decide las rutas del tráfico."},
+    {"id": "chunk-5", "texto": "Una VCN puede contener subredes públicas y privadas."},
+]
 SPEC = {
     "bloom": "Entender (2)",
     "andamiaje": "Alto",
@@ -127,6 +142,7 @@ def test_formatos_mvp_generan_items_tipados_con_anchors_validos(formato: str):
     assert resultado.contenido.items[0].anclaje == ["chunk-1"]
     assert generador.output_model is RespuestaGenerador
     assert "## UNTRUSTED SOURCE CONTEXT" in generador.prompt
+    assert all(chunk["id"] in generador.prompt for chunk in CHUNKS)
 
 
 def test_guion_de_clase_rechazado_en_esta_fase():
@@ -188,16 +204,16 @@ def test_tutorial_con_pasos_no_consecutivos_se_rechaza():
 
 
 def test_anchors_validos_se_preservan_en_los_items():
-    chunks = [*CHUNKS, {"id": "chunk-2", "texto": "Las subredes organizan los recursos."}]
+    chunks = [*CHUNKS, {"id": "chunk-6", "texto": "Las subredes organizan los recursos."}]
     salida = salida_valida("Flashcards")
-    salida["contenido"]["items"][0]["anclaje"] = ["chunk-1", "chunk-2"]
+    salida["contenido"]["items"][0]["anclaje"] = ["chunk-1", "chunk-6"]
 
     resultado = asyncio.run(
         redactar_pedagogicamente(solicitud("Flashcards"), chunks, SPEC, FakeGenerator(salida))
     )
 
     assert resultado.contenido is not None
-    assert resultado.contenido.items[0].anclaje == ["chunk-1", "chunk-2"]
+    assert resultado.contenido.items[0].anclaje == ["chunk-1", "chunk-6"]
 
 
 def test_evidencia_insuficiente_produce_abstencion_sin_contenido():
@@ -239,8 +255,27 @@ def test_prompt_incluye_spec_y_nivel_detalle_sin_alterar_reglas_pedagogicas():
     assert "Comprensión conceptual" in prompt
     assert "explicar" in prompt
     assert '"nivel_detalle": "Didactico"' in prompt
-    assert "no cambia bloom, foco ni registro" in prompt.lower()
-    assert "no fija un número de items" in prompt
+    assert "no cambia el perfil cognitivo, bloom, andamiaje, registro, foco ni verbos" in prompt.lower()
+    assert "no fija un número de items" in prompt.lower()
+
+
+@pytest.mark.parametrize(
+    "formato",
+    ["Flashcards", "Tutorial", "Quiz", "Resumen Ejecutivo"],
+)
+def test_ejemplo_json_del_prompt_valida_con_el_schema_del_formato(formato: str):
+    solicitud_formato = solicitud(formato)
+    prompt = construir_prompt_redactor(solicitud_formato, CHUNKS, SPEC)
+    ejemplo = _EJEMPLOS_ITEM_POR_FORMATO[solicitud_formato.formato_salida]
+
+    MODELO_ITEM_POR_FORMATO[solicitud_formato.formato_salida].model_validate(ejemplo)
+    assert "## JSON OUTPUT EXAMPLE (SHAPE ONLY)" in prompt
+    assert json.dumps(ejemplo, ensure_ascii=False, indent=2) in prompt
+    assert "no copies sus hechos" in prompt.lower()
+    bloque_json = prompt.split("```json\n", maxsplit=1)[1].split("\n```", maxsplit=1)[0]
+    MODELO_ITEM_POR_FORMATO[solicitud_formato.formato_salida].model_validate(
+        json.loads(bloque_json)
+    )
 
 
 def test_prompt_no_fija_proveedor_ni_modelo():
@@ -250,6 +285,22 @@ def test_prompt_no_fija_proveedor_ni_modelo():
     assert "modelo de lenguaje" not in prompt.lower()
     assert "groq" not in prompt.lower()
     assert "gemini" not in prompt.lower()
+
+
+def test_prompt_acepta_la_especificacion_pedagogica_tipada_del_carril():
+    especificacion_tipada = SimpleNamespace(
+        bloom="Entender",
+        andamiaje="Alto",
+        registro="Cotidiano",
+        foco="Comprensión conceptual",
+        verbos=("explicar", "identificar", "describir"),
+    )
+
+    prompt = construir_prompt_redactor(solicitud("Flashcards"), CHUNKS, especificacion_tipada)
+
+    assert '"bloom": "Entender"' in prompt
+    assert '"andamiaje": "Alto"' in prompt
+    assert '"verbos": ["explicar", "identificar", "describir"]' in prompt
 
 
 def test_fake_generator_ejecuta_camino_feliz_completo():
