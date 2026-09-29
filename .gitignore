@@ -21,6 +21,7 @@ venv/
 
 # --- Datos generados ---
 data/vector_store/
+chroma_db/
 data/uploads/
 *.log
 
