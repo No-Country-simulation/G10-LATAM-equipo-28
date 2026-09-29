@@ -15,11 +15,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.rag.chunking import MINIMO_CARACTERES, _unir_paginas, dividir_en_chunks  # noqa: E402
+from src.rag.chunking import _unir_paginas, dividir_en_chunks  # noqa: E402
 from src.rag.configuracion import ConfigRAG  # noqa: E402
 from src.rag.normalizador import normalizar_por_pagina  # noqa: E402
 
-CONFIG = ConfigRAG(chunk_size=200, chunk_overlap=40)
+# Mínimo bajo para probar con textos cortos; el de 100 tiene su propia prueba.
+CONFIG = ConfigRAG(chunk_size=200, chunk_overlap=40, chunk_minimo=20)
 
 
 def _pagina(palabra: str, veces: int = 50) -> str:
@@ -97,9 +98,24 @@ def test_sin_normalizar_respeta_el_texto():
 
 
 def test_descarta_los_chunks_minimos():
-    assert len("Hola") < MINIMO_CARACTERES
+    assert len("Hola") < CONFIG.chunk_minimo
     assert dividir_en_chunks(["Hola"], "d", CONFIG) == []
     assert dividir_en_chunks(["", "  "], "d", CONFIG) == []
+
+
+def test_la_portada_sola_no_se_indexa_con_el_minimo_por_defecto():
+    # Hallazgo de T2-06: la portada de la guía (28 caracteres) salía primera
+    # en consultas ajenas. Con CHUNK_MINIMO=100 no se indexa.
+    config = ConfigRAG()
+    assert config.chunk_minimo == 100
+    chunks = dividir_en_chunks(["GUÍA SCRUM MASTER\n2025\nv.1.0", _pagina("alfa", 300)], "doc1", config)
+    assert chunks and all(c.pagina == 2 for c in chunks)
+    assert all(len(c.texto) >= 100 for c in chunks)
+
+
+def test_saltos_de_linea_de_windows_no_llegan_a_los_chunks():
+    chunks = dividir_en_chunks(["Primera línea del Scrum Master\r\nSegunda línea del equipo Scrum"], "d", CONFIG)
+    assert chunks and all("\r" not in c.texto for c in chunks)
 
 
 @pytest.mark.parametrize("tamano,solapamiento", [(1000, 150), (500, 50)])

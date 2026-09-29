@@ -25,6 +25,7 @@ Variables del .env. Todas son opcionales, salvo el token para usar la API:
     EMBEDDINGS_REINTENTOS  3     ante 429, 5xx, tiempo agotado o falla de red
     CHUNK_SIZE             1000  caracteres
     CHUNK_OVERLAP          150   caracteres
+    CHUNK_MINIMO           100   caracteres; los chunks más cortos no se indexan
     RETRIEVAL_TOP_K        5
     UMBRAL_RETRIEVAL       0.82  provisional: el plan decía 0.78, que con e5
                            deja pasar consultas ajenas (T2-06). Distinto de
@@ -57,6 +58,11 @@ CHROMA_PATH_POR_DEFECTO = "./chroma_db"
 #: Se calibra con unas 20 consultas del tema y 20 ajenas.
 UMBRAL_RETRIEVAL_POR_DEFECTO = 0.82
 
+#: Los chunks más cortos (una portada, un título suelto) no se indexan: por
+#: cortos, se parecen a cualquier consulta. En T2-06, la portada de la guía
+#: (28 caracteres) salía primera en consultas ajenas.
+CHUNK_MINIMO_POR_DEFECTO = 100
+
 _MENSAJE_INVALIDA = "La configuración del RAG no es válida."
 
 
@@ -82,6 +88,7 @@ class ConfigRAG:
     reintentos: int = 3
     chunk_size: int = 1000
     chunk_overlap: int = 150
+    chunk_minimo: int = CHUNK_MINIMO_POR_DEFECTO
     top_k: int = 5
     umbral_retrieval: float = UMBRAL_RETRIEVAL_POR_DEFECTO
     chroma_path: Path = field(default_factory=lambda: resolver_ruta(CHROMA_PATH_POR_DEFECTO))
@@ -119,6 +126,11 @@ class ConfigRAG:
                 f"CHUNK_OVERLAP ({self.chunk_overlap}) debe estar entre 0 y "
                 f"CHUNK_SIZE ({self.chunk_size}), sin llegar a CHUNK_SIZE"
             )
+        if not 0 <= self.chunk_minimo < self.chunk_size:
+            problemas.append(
+                f"CHUNK_MINIMO ({self.chunk_minimo}) debe estar entre 0 y "
+                f"CHUNK_SIZE ({self.chunk_size}), sin llegar a CHUNK_SIZE"
+            )
         if self.top_k < 1:
             problemas.append("RETRIEVAL_TOP_K debe ser al menos 1")
         if not 0.0 < self.umbral_retrieval <= 1.0:
@@ -134,7 +146,7 @@ class ConfigRAG:
         return (
             f"modelo={self.modelo_embeddings} · proveedor={self.proveedor_embeddings}{url} · "
             f"lote={self.tamano_lote} · timeout={self.timeout_segundos:g}s · "
-            f"reintentos={self.reintentos} · chunks={self.chunk_size}/{self.chunk_overlap} · "
+            f"reintentos={self.reintentos} · chunks={self.chunk_size}/{self.chunk_overlap}/mín. {self.chunk_minimo} · "
             f"top_k={self.top_k} · umbral={self.umbral_retrieval} · "
             f"token={'presente' if self.tiene_token else 'AUSENTE'}"
         )
@@ -208,6 +220,7 @@ def cargar_config(entorno: Mapping[str, str] | None = None, *, usar_dotenv: bool
         reintentos=_entero(entorno, "EMBEDDINGS_REINTENTOS", 3),
         chunk_size=_entero(entorno, "CHUNK_SIZE", 1000),
         chunk_overlap=_entero(entorno, "CHUNK_OVERLAP", 150),
+        chunk_minimo=_entero(entorno, "CHUNK_MINIMO", CHUNK_MINIMO_POR_DEFECTO),
         top_k=_entero(entorno, "RETRIEVAL_TOP_K", 5),
         umbral_retrieval=_decimal(entorno, "UMBRAL_RETRIEVAL", UMBRAL_RETRIEVAL_POR_DEFECTO),
         chroma_path=resolver_ruta(_texto(entorno, "CHROMA_PATH") or CHROMA_PATH_POR_DEFECTO),

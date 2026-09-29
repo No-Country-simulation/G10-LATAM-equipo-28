@@ -34,7 +34,7 @@ PAGINAS = [
 
 @pytest.fixture()
 def config(tmp_path) -> ConfigRAG:
-    return ConfigRAG(chroma_path=tmp_path / "chroma", chunk_size=80, chunk_overlap=10)
+    return ConfigRAG(chroma_path=tmp_path / "chroma", chunk_size=80, chunk_overlap=10, chunk_minimo=10)
 
 
 @pytest.fixture()

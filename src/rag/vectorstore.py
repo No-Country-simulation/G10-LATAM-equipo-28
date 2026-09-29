@@ -39,7 +39,7 @@ def firma_de(config: ConfigRAG) -> str:
     """Resume lo que hace incompatible un índice con otro."""
     return (
         f"v{VERSION_INDICE}|{config.modelo_embeddings}|{config.dimension_embeddings}|"
-        f"{config.chunk_size}|{config.chunk_overlap}"
+        f"{config.chunk_size}|{config.chunk_overlap}|{config.chunk_minimo}"
     )
 
 

@@ -31,7 +31,7 @@ def test_valores_por_defecto_del_plan():
     assert cfg.modelo_embeddings == "intfloat/multilingual-e5-base"
     assert cfg.proveedor_embeddings == "hf-inference"
     assert cfg.dimension_embeddings == 768
-    assert (cfg.chunk_size, cfg.chunk_overlap) == (1000, 150)
+    assert (cfg.chunk_size, cfg.chunk_overlap, cfg.chunk_minimo) == (1000, 150, 100)
     assert cfg.top_k == 5
     assert cfg.umbral_retrieval == 0.82  # provisional desde T2-06; el plan decía 0.78
     assert cfg.tamano_lote == 32
@@ -62,6 +62,7 @@ def test_lee_las_variables_del_entorno():
             "EMBEDDINGS_REINTENTOS": "0",
             "CHUNK_SIZE": "800",
             "CHUNK_OVERLAP": "100",
+            "CHUNK_MINIMO": "50",
             "RETRIEVAL_TOP_K": "8",
             "UMBRAL_RETRIEVAL": "0.82",
         }
@@ -73,7 +74,7 @@ def test_lee_las_variables_del_entorno():
     assert cfg.tamano_lote == 16
     assert cfg.timeout_segundos == 12.5
     assert cfg.reintentos == 0
-    assert (cfg.chunk_size, cfg.chunk_overlap, cfg.top_k) == (800, 100, 8)
+    assert (cfg.chunk_size, cfg.chunk_overlap, cfg.chunk_minimo, cfg.top_k) == (800, 100, 50, 8)
     assert cfg.umbral_retrieval == 0.82
 
 
@@ -148,6 +149,8 @@ def test_es_inmutable_y_replace_valida_de_nuevo():
         ({"RETRIEVAL_TOP_K": "0"}, "RETRIEVAL_TOP_K"),
         ({"UMBRAL_RETRIEVAL": "alto"}, "UMBRAL_RETRIEVAL"),
         ({"EMBEDDINGS_URL": "ftp://servidor/embed"}, "EMBEDDINGS_URL"),
+        ({"CHUNK_SIZE": "500", "CHUNK_MINIMO": "500"}, "CHUNK_MINIMO"),
+        ({"CHUNK_MINIMO": "-1"}, "CHUNK_MINIMO"),
     ],
 )
 def test_valores_invalidos_dan_un_error_claro(entorno, fragmento):

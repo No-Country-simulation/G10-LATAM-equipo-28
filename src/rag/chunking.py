@@ -12,6 +12,8 @@ NuevaMente — División del documento en chunks, con la página de cada uno.
   - Un texto suelto (por ejemplo, el `texto_extraido` del MCP, que ya viene con
     las páginas unidas) se divide igual, pero sus chunks quedan sin página.
   - `chunk_id` corto y estable dentro del documento (c0001, c0002...).
+  - Los chunks de menos de CHUNK_MINIMO caracteres (una portada, un título
+    suelto) no se indexan: por cortos, se parecen a cualquier consulta.
 """
 
 from __future__ import annotations
@@ -25,11 +27,6 @@ from .errores import ErrorRAG
 from .extraccion import SEPARADOR_PAGINAS
 from .modelos import Chunk, formatear_chunk_id
 from .normalizador import normalizar, normalizar_por_pagina
-
-#: Los chunks más cortos que esto (un título suelto, un resto) no se indexan:
-#: aportan poco y, por cortos, tienden a parecerse a cualquier consulta.
-MINIMO_CARACTERES = 25
-
 
 def dividir_en_chunks(
     fuente: str | Sequence[str],
@@ -69,7 +66,7 @@ def dividir_en_chunks(
     for contenido in divisor.split_text(texto):
         inicio = _ubicar(texto, contenido, ultimo_inicio)
         ultimo_inicio = inicio
-        if len(contenido.strip()) < MINIMO_CARACTERES:
+        if len(contenido.strip()) < cfg.chunk_minimo:
             continue
         fin = inicio + len(contenido) - 1
         chunks.append(
