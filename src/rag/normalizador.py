@@ -275,6 +275,19 @@ def normalizar_paginas(paginas: list[str]) -> str:
     return normalizar("\n\n".join(paginas))
 
 
+def normalizar_por_pagina(paginas: list[str]) -> list[str]:
+    """
+    Igual que `normalizar_paginas()`, pero devuelve una cadena por pagina.
+
+    Es la que usa el chunking: al conservar las paginas separadas, cada chunk
+    sabe en que pagina empieza y termina. Una pagina sin texto queda como ""
+    para no correr la numeracion.
+    """
+    paginas = [limpiar_simbolos(p) for p in paginas]
+    paginas = quitar_encabezado_repetido(paginas)
+    return [normalizar(p) for p in paginas]
+
+
 # =============================================================================
 # Diagnostico:  python src/rag/normalizador.py <archivo.pdf>
 # =============================================================================

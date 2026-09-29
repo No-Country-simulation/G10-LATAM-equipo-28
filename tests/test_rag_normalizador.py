@@ -21,6 +21,7 @@ from src.rag.normalizador import (  # noqa: E402
     normalizar,
     normalizar_espacios,
     normalizar_paginas,
+    normalizar_por_pagina,
     quitar_encabezado_repetido,
     quitar_ruido_de_linea,
     separar_numero_de_pagina_pegado,
@@ -187,6 +188,29 @@ def test_normalizar_tolera_pagina_sin_texto():
     """Uno de los PDFs reales tiene una pagina sin texto extraible."""
     limpio = normalizar_paginas(["Contenido uno", "", "   ", "Contenido dos"])
     assert "Contenido uno" in limpio and "Contenido dos" in limpio
+
+
+# =============================================================================
+# 6. Normalizar conservando las paginas (lo usa el chunking)
+# =============================================================================
+
+
+def test_normalizar_por_pagina_conserva_la_cantidad_de_paginas():
+    paginas = ["Contenido uno", "", "   ", "Contenido dos"]
+    resultado = normalizar_por_pagina(paginas)
+    assert resultado == ["Contenido uno", "", "", "Contenido dos"]
+
+
+def test_normalizar_por_pagina_quita_el_encabezado_repetido():
+    paginas = [f"Guia oficial del Scrum Master\nContenido de la pagina {i}" for i in range(4)]
+    resultado = normalizar_por_pagina(paginas)
+    assert all("Guia oficial" not in p for p in resultado)
+    assert resultado[2] == "Contenido de la pagina 2"
+
+
+def test_normalizar_por_pagina_repara_lo_mismo_que_normalizar():
+    pagina = "- 4 - 5 Resp onsabilidades del Scrum Maste r"
+    assert normalizar_por_pagina([pagina]) == [normalizar(pagina)]
 
 
 if __name__ == "__main__":
