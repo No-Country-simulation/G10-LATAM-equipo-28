@@ -29,9 +29,11 @@ from src.rag.embeddings import (  # noqa: E402
     ESPERA_MAXIMA_SEGUNDOS,
     PREFIJO_CONSULTA,
     PREFIJO_DOCUMENTO,
+    URL_HF_INFERENCE,
     EmbeddingsE5,
     dividir_en_lotes,
     preparar_texto,
+    url_de_embeddings,
 )
 from src.rag.errores import ErrorEmbeddings  # noqa: E402
 
@@ -359,7 +361,60 @@ def test_mensaje_para_el_usuario_no_trae_detalles_tecnicos():
 
 
 # =============================================================================
-# 7. Estadísticas, parámetros y compatibilidad con LangChain
+# 7. Cómo se arma el cliente real (hallazgo de la prueba en vivo)
+# =============================================================================
+
+
+class ClienteRegistrador:
+    """Reemplaza a InferenceClient para ver con qué argumentos se crea."""
+
+    creaciones: list[dict] = []
+
+    def __init__(self, **kwargs):
+        ClienteRegistrador.creaciones.append(kwargs)
+
+
+@pytest.fixture()
+def registrador(monkeypatch):
+    ClienteRegistrador.creaciones = []
+    monkeypatch.setattr("huggingface_hub.InferenceClient", ClienteRegistrador)
+    return ClienteRegistrador.creaciones
+
+
+def test_con_hf_inference_usa_la_url_del_pipeline(registrador):
+    EmbeddingsE5(ConfigRAG(hf_token=TOKEN, timeout_segundos=12))._obtener_cliente()
+    (argumentos,) = registrador
+    assert argumentos["model"] == (
+        "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-base/pipeline/feature-extraction"
+    )
+    assert "provider" not in argumentos
+    assert argumentos["token"] == TOKEN and argumentos["timeout"] == 12
+
+
+def test_una_url_propia_manda(registrador):
+    EmbeddingsE5(ConfigRAG(hf_token=TOKEN, url_embeddings="https://mi-endpoint.ejemplo/embed"))._obtener_cliente()
+    assert registrador[0]["model"] == "https://mi-endpoint.ejemplo/embed"
+
+
+def test_otro_proveedor_usa_la_ruta_de_huggingface_hub(registrador):
+    EmbeddingsE5(ConfigRAG(hf_token=TOKEN, proveedor_embeddings="otro-proveedor"))._obtener_cliente()
+    assert registrador[0]["model"] == "intfloat/multilingual-e5-base"
+    assert registrador[0]["provider"] == "otro-proveedor"
+
+
+def test_url_de_embeddings():
+    assert url_de_embeddings(ConfigRAG()) == URL_HF_INFERENCE.format(modelo="intfloat/multilingual-e5-base")
+    assert url_de_embeddings(ConfigRAG(proveedor_embeddings="otro")) is None
+
+
+def test_el_cliente_se_crea_una_sola_vez(registrador):
+    emb = EmbeddingsE5(ConfigRAG(hf_token=TOKEN))
+    assert emb._obtener_cliente() is emb._obtener_cliente()
+    assert len(registrador) == 1
+
+
+# =============================================================================
+# 8. Estadísticas, parámetros y compatibilidad con LangChain
 # =============================================================================
 
 

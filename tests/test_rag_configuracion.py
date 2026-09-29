@@ -37,6 +37,13 @@ def test_valores_por_defecto_del_plan():
     assert cfg.tamano_lote == 32
     assert cfg.chroma_path == (RAIZ_REPO / "chroma_db").resolve()
     assert cfg.hf_token is None and not cfg.tiene_token
+    assert cfg.url_embeddings is None
+
+
+def test_lee_una_url_propia_para_los_embeddings():
+    cfg = cargar_config(entorno={"EMBEDDINGS_URL": "https://mi-endpoint.ejemplo/embed"})
+    assert cfg.url_embeddings == "https://mi-endpoint.ejemplo/embed"
+    assert "url=https://mi-endpoint.ejemplo/embed" in cfg.resumen_seguro()
 
 
 def test_raiz_del_repo_es_la_carpeta_de_src():
@@ -140,6 +147,7 @@ def test_es_inmutable_y_replace_valida_de_nuevo():
         ({"EMBEDDINGS_REINTENTOS": "-2"}, "EMBEDDINGS_REINTENTOS"),
         ({"RETRIEVAL_TOP_K": "0"}, "RETRIEVAL_TOP_K"),
         ({"UMBRAL_RETRIEVAL": "alto"}, "UMBRAL_RETRIEVAL"),
+        ({"EMBEDDINGS_URL": "ftp://servidor/embed"}, "EMBEDDINGS_URL"),
     ],
 )
 def test_valores_invalidos_dan_un_error_claro(entorno, fragmento):

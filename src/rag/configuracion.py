@@ -16,6 +16,9 @@ Variables del .env. Todas son opcionales, salvo el token para usar la API:
                            HUGGINGFACEHUB_API_TOKEN. Nunca se imprime.
     EMBEDDINGS_MODELO      intfloat/multilingual-e5-base
     EMBEDDINGS_PROVEEDOR   hf-inference
+    EMBEDDINGS_URL         (vacía) URL propia del servidor de embeddings; si
+                           falta, con hf-inference se usa la del pipeline de
+                           feature-extraction del router de Hugging Face
     EMBEDDINGS_DIMENSION   768
     EMBEDDINGS_LOTE        32    textos por petición
     EMBEDDINGS_TIMEOUT     30    segundos por petición
@@ -65,6 +68,7 @@ class ConfigRAG:
     hf_token: str | None = field(default=None, repr=False)
     modelo_embeddings: str = MODELO_POR_DEFECTO
     proveedor_embeddings: str = PROVEEDOR_POR_DEFECTO
+    url_embeddings: str | None = None
     dimension_embeddings: int = DIMENSION_E5_BASE
     tamano_lote: int = 32
     timeout_segundos: float = 30.0
@@ -91,6 +95,8 @@ class ConfigRAG:
             problemas.append("EMBEDDINGS_MODELO no puede quedar vacío")
         if not self.proveedor_embeddings.strip():
             problemas.append("EMBEDDINGS_PROVEEDOR no puede quedar vacío")
+        if self.url_embeddings and not self.url_embeddings.startswith(("https://", "http://")):
+            problemas.append("EMBEDDINGS_URL debe empezar por https:// o http://")
         if self.dimension_embeddings < 1:
             problemas.append("EMBEDDINGS_DIMENSION debe ser mayor que 0")
         if self.tamano_lote < 1:
@@ -117,8 +123,9 @@ class ConfigRAG:
 
     def resumen_seguro(self) -> str:
         """Resumen para la consola o los registros. Nunca incluye el token."""
+        url = f" · url={self.url_embeddings}" if self.url_embeddings else ""
         return (
-            f"modelo={self.modelo_embeddings} · proveedor={self.proveedor_embeddings} · "
+            f"modelo={self.modelo_embeddings} · proveedor={self.proveedor_embeddings}{url} · "
             f"lote={self.tamano_lote} · timeout={self.timeout_segundos:g}s · "
             f"reintentos={self.reintentos} · chunks={self.chunk_size}/{self.chunk_overlap} · "
             f"top_k={self.top_k} · umbral={self.umbral_retrieval} · "
@@ -187,6 +194,7 @@ def cargar_config(entorno: Mapping[str, str] | None = None, *, usar_dotenv: bool
         hf_token=token or None,
         modelo_embeddings=_texto(entorno, "EMBEDDINGS_MODELO") or MODELO_POR_DEFECTO,
         proveedor_embeddings=_texto(entorno, "EMBEDDINGS_PROVEEDOR") or PROVEEDOR_POR_DEFECTO,
+        url_embeddings=_texto(entorno, "EMBEDDINGS_URL") or None,
         dimension_embeddings=_entero(entorno, "EMBEDDINGS_DIMENSION", DIMENSION_E5_BASE),
         tamano_lote=_entero(entorno, "EMBEDDINGS_LOTE", 32),
         timeout_segundos=_decimal(entorno, "EMBEDDINGS_TIMEOUT", 30.0),

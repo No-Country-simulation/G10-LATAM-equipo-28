@@ -14,6 +14,17 @@ Revisado su código en langchain-huggingface 1.2.2:
 pero con lotes, prefijos, timeout, reintentos y vectores normalizados, y cumple
 la interfaz `Embeddings` de LangChain.
 
+POR QUÉ LA URL DEL PIPELINE (hallazgo de la prueba en vivo de T2-06)
+-------------------------------------------------------------------
+Con `provider="hf-inference"`, huggingface_hub 1.33 rechaza la llamada antes de
+enviarla: "Model 'intfloat/multilingual-e5-base' doesn't support task
+'feature-extraction'", porque el modelo está publicado como
+sentence-similarity. El servidor sí atiende feature-extraction para e5 y
+devuelve un vector de 768 por texto. Por eso, con hf-inference, el cliente se
+crea con la URL del pipeline como modelo: se evita ese chequeo y, de paso, la
+consulta previa a huggingface.co. EMBEDDINGS_URL permite apuntar a otro
+servidor (por ejemplo, un Inference Endpoint propio).
+
 PREFIJOS DE e5
 --------------
 El modelo se entrenó con prefijos y sin ellos rinde peor:
@@ -50,6 +61,9 @@ logger = logging.getLogger(__name__)
 
 PREFIJO_DOCUMENTO = "passage: "
 PREFIJO_CONSULTA = "query: "
+
+#: Pipeline de feature-extraction de hf-inference en el router de Hugging Face.
+URL_HF_INFERENCE = "https://router.huggingface.co/hf-inference/models/{modelo}/pipeline/feature-extraction"
 
 #: Tope de espera entre reintentos, aunque el servidor pida más con Retry-After.
 ESPERA_MAXIMA_SEGUNDOS = 30.0
@@ -89,6 +103,21 @@ class EstadisticasEmbeddings:
 
     def como_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+def url_de_embeddings(config: ConfigRAG) -> str | None:
+    """
+    URL a la que se mandan los textos, o None para dejar que huggingface_hub
+    arme la ruta del proveedor.
+
+    EMBEDDINGS_URL manda; si no está y el proveedor es hf-inference, se usa la
+    URL del pipeline de feature-extraction (ver el docstring del módulo).
+    """
+    if config.url_embeddings:
+        return config.url_embeddings
+    if config.proveedor_embeddings == "hf-inference":
+        return URL_HF_INFERENCE.format(modelo=config.modelo_embeddings)
+    return None
 
 
 def preparar_texto(texto: str, prefijo: str) -> str:
@@ -210,12 +239,18 @@ class EmbeddingsE5(Embeddings):
             # Import diferido: huggingface_hub pesa y las pruebas no lo necesitan.
             from huggingface_hub import InferenceClient
 
-            self._cliente = InferenceClient(
-                model=self.config.modelo_embeddings,
-                provider=self.config.proveedor_embeddings,
-                token=self.config.hf_token,
-                timeout=self.config.timeout_segundos,
-            )
+            url = url_de_embeddings(self.config)
+            if url is not None:
+                self._cliente = InferenceClient(
+                    model=url, token=self.config.hf_token, timeout=self.config.timeout_segundos
+                )
+            else:
+                self._cliente = InferenceClient(
+                    model=self.config.modelo_embeddings,
+                    provider=self.config.proveedor_embeddings,
+                    token=self.config.hf_token,
+                    timeout=self.config.timeout_segundos,
+                )
         return self._cliente
 
     def _embeber_lote(self, lote: list[str]) -> list[list[float]]:
