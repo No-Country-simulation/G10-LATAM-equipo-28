@@ -72,9 +72,9 @@ def test_el_umbral_filtra(entorno):
 
 def test_por_defecto_usa_top_k_y_umbral_de_la_configuracion(entorno):
     document_id, embeddings, almacen = entorno
-    assert almacen.config.umbral_retrieval == 0.82 and almacen.config.top_k == 5
+    assert almacen.config.umbral_retrieval == 0.83 and almacen.config.top_k == 5
     resultado = recuperar(document_id, "arepas", embeddings=embeddings, almacen=almacen)
-    assert all(r.score >= 0.82 for r in resultado)
+    assert all(r.score >= 0.83 for r in resultado)
 
 
 def test_top_k(entorno):

@@ -16,7 +16,7 @@ Uso, desde la raíz del repo y con el .venv activo:
                        puntajes no son los de e5.
 
 Criterio del plan: la consulta «Scrum Master» devuelve chunks sobre
-UMBRAL_RETRIEVAL (0.78 en el plan; 0.82 provisional desde T2-06).
+UMBRAL_RETRIEVAL (0.78 en el plan; 0.83 calibrado con e5 el 29/09).
 """
 
 from __future__ import annotations

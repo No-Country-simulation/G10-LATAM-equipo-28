@@ -27,13 +27,13 @@ Variables del .env. Todas son opcionales, salvo el token para usar la API:
     CHUNK_OVERLAP          150   caracteres
     CHUNK_MINIMO           100   caracteres; los chunks más cortos no se indexan
     RETRIEVAL_TOP_K        5
-    UMBRAL_RETRIEVAL       0.82  provisional: el plan decía 0.78, que con e5
-                           deja pasar consultas ajenas (T2-06). Distinto de
+    UMBRAL_RETRIEVAL       0.83  calibrado con e5 el 29/09; el plan decía 0.78,
+                           que deja pasar consultas ajenas. Distinto de
                            UMBRAL_FIDELIDAD (D-12)
     CHROMA_PATH            ./chroma_db; si es relativo, cuenta desde la raíz
                            del repo y no desde el directorio de trabajo
 
-Los decimales aceptan punto o coma: 0.82 y 0,82 valen lo mismo.
+Los decimales aceptan punto o coma: 0.83 y 0,83 valen lo mismo.
 """
 
 from __future__ import annotations
@@ -53,10 +53,13 @@ PROVEEDOR_POR_DEFECTO = "hf-inference"
 DIMENSION_E5_BASE = 768
 CHROMA_PATH_POR_DEFECTO = "./chroma_db"
 
-#: Provisional desde T2-06 (29/09). El plan decía 0.78, pero con e5 dejaba
-#: pasar consultas ajenas (hasta 0.794), y las del tema empezaban en 0.853.
-#: Se calibra con unas 20 consultas del tema y 20 ajenas.
-UMBRAL_RETRIEVAL_POR_DEFECTO = 0.82
+#: Calibrado con e5 el 29/09 (scripts/calibrar_e5.py, 69 consultas sobre las
+#: 5 guías de prueba). Con consultas descriptivas separa sin errores: las del
+#: tema marcan desde 0.858 y las ajenas hasta 0.818. Con una o dos palabras,
+#: ningún umbral separa: 0.83 deja afuera «Kanban» (0.797) e «impedimentos»
+#: (0.818), y no pasa ninguna ajena (la más alta, «contabilidad», marca 0.824).
+#: El plan decía 0.78.
+UMBRAL_RETRIEVAL_POR_DEFECTO = 0.83
 
 #: Los chunks más cortos (una portada, un título suelto) no se indexan: por
 #: cortos, se parecen a cualquier consulta. En T2-06, la portada de la guía
