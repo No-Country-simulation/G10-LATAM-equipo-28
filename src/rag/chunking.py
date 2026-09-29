@@ -14,6 +14,8 @@ NuevaMente — División del documento en chunks, con la página de cada uno.
   - `chunk_id` corto y estable dentro del documento (c0001, c0002...).
   - Los chunks de menos de CHUNK_MINIMO caracteres (una portada, un título
     suelto) no se indexan: por cortos, se parecen a cualquier consulta.
+  - La tabla de contenido se quita antes de dividir (tabla_de_contenido.py):
+    sus chunks no respondían consultas del tema y atraían consultas ajenas.
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ from .errores import ErrorRAG
 from .extraccion import SEPARADOR_PAGINAS
 from .modelos import Chunk, formatear_chunk_id
 from .normalizador import normalizar, normalizar_por_pagina
+from .tabla_de_contenido import quitar_tabla_de_contenido
 
 def dividir_en_chunks(
     fuente: str | Sequence[str],
@@ -39,7 +42,8 @@ def dividir_en_chunks(
     Normaliza y divide el documento.
 
     `fuente` es una lista de páginas (lo recomendado: conserva la página) o un
-    texto suelto. Con `normalizar_texto=False` se usa tal cual llega.
+    texto suelto. Con `normalizar_texto=False` no se normaliza, pero la tabla
+    de contenido se quita igual.
     """
     from langchain_text_splitters import RecursiveCharacterTextSplitter  # import diferido
 
@@ -52,6 +56,7 @@ def dividir_en_chunks(
             paginas = normalizar_por_pagina(paginas)
     else:
         paginas = [normalizar(fuente) if normalizar_texto else fuente]
+    paginas = quitar_tabla_de_contenido(paginas)
 
     texto, inicios = _unir_paginas(paginas)
     divisor = RecursiveCharacterTextSplitter(

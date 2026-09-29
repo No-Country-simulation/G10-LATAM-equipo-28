@@ -113,6 +113,17 @@ def test_la_portada_sola_no_se_indexa_con_el_minimo_por_defecto():
     assert all(len(c.texto) >= 100 for c in chunks)
 
 
+def test_la_tabla_de_contenido_no_llega_a_los_chunks():
+    paginas = [
+        "GUÍA SCRUM MASTER\n2025\nv.1.0",
+        "1 Tableof Contents\n2 Objetivos de la Guía - 3 -\n3 El Rol - 3 -\n4 Los eventos - 4 -",
+        "2 Objetivos de la Guía\n" + _pagina("alfa", 40),
+    ]
+    texto = "\n".join(c.texto for c in dividir_en_chunks(paginas, "doc1", CONFIG))
+    assert "Tableof" not in texto and "- 3 -" not in texto
+    assert "2 Objetivos de la Guía" in texto and "alfa39" in texto
+
+
 def test_saltos_de_linea_de_windows_no_llegan_a_los_chunks():
     chunks = dividir_en_chunks(["Primera línea del Scrum Master\r\nSegunda línea del equipo Scrum"], "d", CONFIG)
     assert chunks and all("\r" not in c.texto for c in chunks)

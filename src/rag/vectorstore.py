@@ -28,7 +28,8 @@ from .modelos import Chunk
 
 #: Súbela si cambian la normalización o el chunking de forma que el índice
 #: viejo ya no sirva: todos los documentos se reindexan solos.
-VERSION_INDICE = 1
+#: 2 (29/09): se quita la tabla de contenido antes de dividir.
+VERSION_INDICE = 2
 
 PREFIJO_COLECCION = "doc_"
 _PATRON_DOCUMENT_ID = re.compile(r"^[A-Za-z0-9_-]{1,60}$")
