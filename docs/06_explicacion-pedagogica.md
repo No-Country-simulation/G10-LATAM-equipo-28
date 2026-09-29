@@ -51,7 +51,15 @@ Los verbos recomendados orientan la redacción y se exponen bajo el nombre canó
 
 ## Interfaz y nivel de detalle
 
-`nivel_detalle` forma parte de la interfaz de `construir_especificacion_pedagogica(perfil, nivel_detalle)`. Actualmente no modifica el mapping: todavía no existe una regla canónica acordada para cambiar Bloom, andamiaje, registro, foco o verbos según ese valor. La función conserva el parámetro sin inventar una fórmula.
+`nivel_detalle` forma parte de la interfaz de `construir_especificacion_pedagogica(perfil, nivel_detalle)`. No modifica Bloom, andamiaje, registro, foco ni verbos. El Redactor lo recibe aparte y solo lo usa para modular extensión y densidad; no se inventa una fórmula que altere el mapping.
+
+## Fichas JSON de formatos
+
+`src/pedagogia/formatos/` contiene fichas versionadas para los cuatro formatos habilitados: Flashcards, Tutorial, Quiz y Resumen Ejecutivo. Las reglas pedagógicas proceden de `docs/02_Decision-gate_v2_RESUELTO.md` §2.1–§2.4. El loader comprueba que cada ficha corresponda a `FormatoSalida`, que sus campos coincidan con el modelo vigente y que el catálogo incluya exactamente los formatos de `FORMATOS_IMPLEMENTADOS_MVP`.
+
+Las fichas no sustituyen ni modifican `src/contracts/`; Pydantic sigue siendo la fuente de validación de salida. `Guion de Clase` está declarado en el enum y tiene un modelo, pero D-01 lo mantiene fuera del MVP y `SolicitudAdaptacion` lo rechaza. El planning del 28/09 y la aceptación registrada para T2-08 no documentan una decisión explícita posterior que descongele ese contrato. Por eso esta entrega conserva cuatro formatos y deja la discrepancia 4/5 pendiente de decisión colectiva; no implementa Guion unilateralmente.
+
+La división entre pull requests es: PR #3 mantiene el mapping, las fichas pedagógicas JSON y sus pruebas; PR #4 mantiene el core del Redactor, el prompt, sus ejemplos JSON de salida, validación e integración. Los ejemplos del Redactor son fixtures del prompt y no duplican las reglas pedagógicas de las fichas.
 
 ## Límites y pruebas
 
