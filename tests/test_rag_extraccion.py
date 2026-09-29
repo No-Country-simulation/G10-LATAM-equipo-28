@@ -39,12 +39,21 @@ def test_pagina_sin_texto_queda_vacia_y_no_corre_la_numeracion(tmp_path):
 
 
 def test_markdown_y_texto_son_una_sola_cadena(tmp_path):
+    # write_bytes y no write_text: en Windows, write_text cambia "\n" por "\r\n".
     md = tmp_path / "nota.md"
-    md.write_text("# Título\n\nEl Scrum Master facilita.", encoding="utf-8")
+    md.write_bytes("# Título\n\nEl Scrum Master facilita.".encode("utf-8"))
     txt = tmp_path / "nota.txt"
-    txt.write_text("Texto plano con eñe.", encoding="utf-8")
+    txt.write_bytes("Texto plano con eñe.".encode("utf-8"))
     assert extraer_paginas(md) == ["# Título\n\nEl Scrum Master facilita."]
     assert extraer_paginas(txt) == ["Texto plano con eñe."]
+
+
+def test_saltos_de_linea_de_windows_se_conservan_como_en_el_mcp(tmp_path):
+    # El MCP decodifica los bytes tal cual: si la extracción los cambiara, el
+    # mismo archivo daría otro document_id. El normalizador los limpia después.
+    archivo = tmp_path / "windows.md"
+    archivo.write_bytes(b"Linea uno\r\nLinea dos")
+    assert extraer_paginas(archivo) == ["Linea uno\r\nLinea dos"]
 
 
 def test_texto_en_latin1_como_el_mcp(tmp_path):
