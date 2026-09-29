@@ -1,11 +1,12 @@
 {
-  "version": 1,
-  "estado": "Revisado por Oscar el 29/09/2026. Redactado a partir del texto extraído de las 5 guías de prueba (europeanscrum.org).",
+  "version": 2,
+  "estado": "Revisado por Oscar el 29/09/2026; la versión 2 suma 23 consultas cortas, también revisadas por él el 29/09/2026. Redactado a partir del texto extraído de las 5 guías de prueba (europeanscrum.org).",
   "instrucciones": [
     "consultas.tipo: 'tema' (la guía la responde), 'vecina' (tema cercano que la guía no trata como propio) o 'ajena' (nada que ver).",
     "afirmaciones.tipo: 'anclada' (se desprende de la guía; 'fuente' dice la página del PDF), 'inventada_tema' (plausible pero la guía la contradice) o 'inventada_ajena' (de otro dominio).",
     "Cada ítem se compara solo contra los chunks de su 'guia'. Las páginas son las del PDF, no las del índice impreso.",
-    "Se puede agregar, quitar o corregir ítems: el script no depende de la cantidad."
+    "Se puede agregar, quitar o corregir ítems: el script no depende de la cantidad.",
+    "consultas.forma (opcional): 'corta' marca las de 1 a 4 palabras; sin 'forma', la consulta es descriptiva."
   ],
   "guias": {
     "scrum_master": "*scrum_master*.pdf",
@@ -35,6 +36,16 @@
     {"guia": "agile_coach", "tipo": "tema", "texto": "modelos de gestión del cambio ADKAR y Kotter"},
     {"guia": "agile_coach", "tipo": "tema", "texto": "¿Qué es SAFe?"},
     {"guia": "agile_coach", "tipo": "tema", "texto": "estrategias para adoptar Agile en la empresa"},
+    {"guia": "scrum_master", "tipo": "tema", "forma": "corta", "texto": "Scrum Master"},
+    {"guia": "scrum_master", "tipo": "tema", "forma": "corta", "texto": "impedimentos"},
+    {"guia": "product_owner", "tipo": "tema", "forma": "corta", "texto": "Product Owner"},
+    {"guia": "product_owner", "tipo": "tema", "forma": "corta", "texto": "Product Backlog"},
+    {"guia": "scrum", "tipo": "tema", "forma": "corta", "texto": "Sprint"},
+    {"guia": "scrum", "tipo": "tema", "forma": "corta", "texto": "Daily Scrum"},
+    {"guia": "ai_agile", "tipo": "tema", "forma": "corta", "texto": "inteligencia artificial y agilidad"},
+    {"guia": "ai_agile", "tipo": "tema", "forma": "corta", "texto": "Design Thinking"},
+    {"guia": "agile_coach", "tipo": "tema", "forma": "corta", "texto": "Manifiesto Agile"},
+    {"guia": "agile_coach", "tipo": "tema", "forma": "corta", "texto": "Kanban"},
 
     {"guia": "scrum_master", "tipo": "vecina", "texto": "responsabilidades del Product Owner"},
     {"guia": "scrum_master", "tipo": "vecina", "texto": "priorización con el modelo Kano"},
@@ -42,6 +53,9 @@
     {"guia": "scrum", "tipo": "vecina", "texto": "automatización del backlog con inteligencia artificial"},
     {"guia": "ai_agile", "tipo": "vecina", "texto": "cláusulas de bonificación y penalización en contratos"},
     {"guia": "agile_coach", "tipo": "vecina", "texto": "Planning Poker con aplicaciones interactivas"},
+    {"guia": "scrum_master", "tipo": "vecina", "forma": "corta", "texto": "Product Owner"},
+    {"guia": "scrum_master", "tipo": "vecina", "forma": "corta", "texto": "modelo Kano"},
+    {"guia": "scrum_master", "tipo": "vecina", "forma": "corta", "texto": "contratos ágiles"},
 
     {"guia": "scrum_master", "tipo": "ajena", "texto": "receta de arepas antioqueñas"},
     {"guia": "scrum_master", "tipo": "ajena", "texto": "normativa RETIE para subestaciones eléctricas"},
@@ -62,7 +76,17 @@
     {"guia": "agile_coach", "tipo": "ajena", "texto": "reproducción de las tortugas marinas"},
     {"guia": "agile_coach", "tipo": "ajena", "texto": "ley de Ohm y circuitos en serie"},
     {"guia": "agile_coach", "tipo": "ajena", "texto": "cultivo de aguacate Hass"},
-    {"guia": "agile_coach", "tipo": "ajena", "texto": "requisitos para sacar el pasaporte"}
+    {"guia": "agile_coach", "tipo": "ajena", "texto": "requisitos para sacar el pasaporte"},
+    {"guia": "scrum_master", "tipo": "ajena", "forma": "corta", "texto": "energía solar"},
+    {"guia": "scrum_master", "tipo": "ajena", "forma": "corta", "texto": "flujo de caja"},
+    {"guia": "product_owner", "tipo": "ajena", "forma": "corta", "texto": "plantas fotovoltaicas"},
+    {"guia": "product_owner", "tipo": "ajena", "forma": "corta", "texto": "criptomonedas"},
+    {"guia": "scrum", "tipo": "ajena", "forma": "corta", "texto": "subestaciones eléctricas"},
+    {"guia": "scrum", "tipo": "ajena", "forma": "corta", "texto": "contabilidad"},
+    {"guia": "ai_agile", "tipo": "ajena", "forma": "corta", "texto": "recetas de cocina"},
+    {"guia": "ai_agile", "tipo": "ajena", "forma": "corta", "texto": "ciberseguridad"},
+    {"guia": "agile_coach", "tipo": "ajena", "forma": "corta", "texto": "fútbol"},
+    {"guia": "agile_coach", "tipo": "ajena", "forma": "corta", "texto": "impuestos"}
   ],
   "afirmaciones": [
     {"guia": "scrum_master", "tipo": "anclada", "fuente": "p. 4", "texto": "El Scrum Master no es un jefe de proyecto: es un líder al servicio del equipo que facilita su autonomía."},
