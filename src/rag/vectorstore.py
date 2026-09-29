@@ -28,7 +28,8 @@ from .modelos import Chunk
 
 #: Súbela si cambian la normalización o el chunking de forma que el índice
 #: viejo ya no sirva: todos los documentos se reindexan solos.
-#: 2 (29/09): se quita la tabla de contenido antes de dividir.
+#: 2 (29/09): se quita la tabla de contenido antes de dividir y se unen los
+#: chunks cortos (CHUNK_FUSION, que también entra en la firma).
 VERSION_INDICE = 2
 
 PREFIJO_COLECCION = "doc_"
@@ -40,7 +41,7 @@ def firma_de(config: ConfigRAG) -> str:
     """Resume lo que hace incompatible un índice con otro."""
     return (
         f"v{VERSION_INDICE}|{config.modelo_embeddings}|{config.dimension_embeddings}|"
-        f"{config.chunk_size}|{config.chunk_overlap}|{config.chunk_minimo}"
+        f"{config.chunk_size}|{config.chunk_overlap}|{config.chunk_minimo}|{config.chunk_fusion}"
     )
 
 

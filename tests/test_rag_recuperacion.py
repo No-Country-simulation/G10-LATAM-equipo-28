@@ -35,7 +35,9 @@ PAGINAS = [
 
 @pytest.fixture()
 def entorno(tmp_path):
-    config = ConfigRAG(chroma_path=tmp_path / "chroma", chunk_size=120, chunk_overlap=10, chunk_minimo=20)
+    config = ConfigRAG(
+        chroma_path=tmp_path / "chroma", chunk_size=120, chunk_overlap=10, chunk_minimo=20, chunk_fusion=0
+    )
     almacen = AlmacenChroma(config)
     embeddings = EmbeddingsFalsos()
     document_id = calcular_document_id(PAGINAS)

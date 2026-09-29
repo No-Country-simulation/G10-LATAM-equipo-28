@@ -35,7 +35,7 @@ PAGINAS = [
 
 @pytest.fixture()
 def almacen(tmp_path) -> AlmacenChroma:
-    return AlmacenChroma(ConfigRAG(chroma_path=tmp_path / "chroma", chunk_size=200, chunk_overlap=20))
+    return AlmacenChroma(ConfigRAG(chroma_path=tmp_path / "chroma", chunk_size=200, chunk_overlap=20, chunk_fusion=0))
 
 
 # =============================================================================
@@ -99,7 +99,9 @@ def test_forzar_reindexa(almacen):
 def test_si_cambia_el_chunking_se_reindexa_solo(almacen, tmp_path):
     document_id = calcular_document_id(PAGINAS)
     indexar_documento(document_id, PAGINAS, embeddings=EmbeddingsFalsos(), almacen=almacen)
-    otra = AlmacenChroma(ConfigRAG(chroma_path=almacen.config.chroma_path, chunk_size=120, chunk_overlap=20))
+    otra = AlmacenChroma(
+        ConfigRAG(chroma_path=almacen.config.chroma_path, chunk_size=120, chunk_overlap=20, chunk_fusion=0)
+    )
     embeddings = EmbeddingsFalsos()
     indexar_documento(document_id, PAGINAS, embeddings=embeddings, almacen=otra)
     assert embeddings.llamadas_documentos == 1

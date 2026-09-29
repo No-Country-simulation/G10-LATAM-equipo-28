@@ -34,7 +34,7 @@ PAGINAS = [
 
 @pytest.fixture()
 def config(tmp_path) -> ConfigRAG:
-    return ConfigRAG(chroma_path=tmp_path / "chroma", chunk_size=80, chunk_overlap=10, chunk_minimo=10)
+    return ConfigRAG(chroma_path=tmp_path / "chroma", chunk_size=80, chunk_overlap=10, chunk_minimo=10, chunk_fusion=0)
 
 
 @pytest.fixture()
@@ -102,10 +102,17 @@ def test_el_indice_persiste_entre_instancias(config, indexado):
 
 
 def test_otra_configuracion_invalida_el_indice(config, indexado):
-    otra = ConfigRAG(chroma_path=config.chroma_path, chunk_size=120, chunk_overlap=10)
+    otra = ConfigRAG(chroma_path=config.chroma_path, chunk_size=120, chunk_overlap=10, chunk_fusion=0)
     almacen = AlmacenChroma(otra)
     assert almacen.cantidad("doc1") == 3
     assert not almacen.esta_indexado("doc1")
+
+
+def test_cambiar_la_fusion_invalida_el_indice(config, indexado):
+    otra = ConfigRAG(
+        chroma_path=config.chroma_path, chunk_size=80, chunk_overlap=10, chunk_minimo=10, chunk_fusion=5
+    )
+    assert not AlmacenChroma(otra).esta_indexado("doc1")
 
 
 def test_guardar_de_nuevo_rehace_la_coleccion(almacen, config, indexado):

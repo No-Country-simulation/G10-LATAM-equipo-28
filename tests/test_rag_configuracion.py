@@ -31,7 +31,7 @@ def test_valores_por_defecto_del_plan():
     assert cfg.modelo_embeddings == "intfloat/multilingual-e5-base"
     assert cfg.proveedor_embeddings == "hf-inference"
     assert cfg.dimension_embeddings == 768
-    assert (cfg.chunk_size, cfg.chunk_overlap, cfg.chunk_minimo) == (1000, 150, 100)
+    assert (cfg.chunk_size, cfg.chunk_overlap, cfg.chunk_minimo, cfg.chunk_fusion) == (1000, 150, 100, 300)
     assert cfg.top_k == 5
     assert cfg.umbral_retrieval == 0.83  # calibrado con e5 el 29/09; el plan decía 0.78
     assert cfg.tamano_lote == 32
@@ -63,6 +63,7 @@ def test_lee_las_variables_del_entorno():
             "CHUNK_SIZE": "800",
             "CHUNK_OVERLAP": "100",
             "CHUNK_MINIMO": "50",
+            "CHUNK_FUSION": "250",
             "RETRIEVAL_TOP_K": "8",
             "UMBRAL_RETRIEVAL": "0.82",
         }
@@ -75,6 +76,7 @@ def test_lee_las_variables_del_entorno():
     assert cfg.timeout_segundos == 12.5
     assert cfg.reintentos == 0
     assert (cfg.chunk_size, cfg.chunk_overlap, cfg.chunk_minimo, cfg.top_k) == (800, 100, 50, 8)
+    assert cfg.chunk_fusion == 250
     assert cfg.umbral_retrieval == 0.82
 
 
@@ -106,6 +108,10 @@ def test_el_token_no_aparece_en_repr_ni_en_el_resumen():
 
 def test_resumen_avisa_si_falta_el_token():
     assert "token=AUSENTE" in cargar_config(entorno={}).resumen_seguro()
+
+
+def test_el_resumen_muestra_la_fusion():
+    assert "/fusión 300" in cargar_config(entorno={}).resumen_seguro()
 
 
 def test_acepta_coma_decimal():
@@ -151,6 +157,8 @@ def test_es_inmutable_y_replace_valida_de_nuevo():
         ({"EMBEDDINGS_URL": "ftp://servidor/embed"}, "EMBEDDINGS_URL"),
         ({"CHUNK_SIZE": "500", "CHUNK_MINIMO": "500"}, "CHUNK_MINIMO"),
         ({"CHUNK_MINIMO": "-1"}, "CHUNK_MINIMO"),
+        ({"CHUNK_SIZE": "500", "CHUNK_FUSION": "500"}, "CHUNK_FUSION"),
+        ({"CHUNK_FUSION": "-1"}, "CHUNK_FUSION"),
     ],
 )
 def test_valores_invalidos_dan_un_error_claro(entorno, fragmento):

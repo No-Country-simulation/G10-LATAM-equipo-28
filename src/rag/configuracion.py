@@ -25,7 +25,10 @@ Variables del .env. Todas son opcionales, salvo el token para usar la API:
     EMBEDDINGS_REINTENTOS  3     ante 429, 5xx, tiempo agotado o falla de red
     CHUNK_SIZE             1000  caracteres
     CHUNK_OVERLAP          150   caracteres
-    CHUNK_MINIMO           100   caracteres; los chunks más cortos no se indexan
+    CHUNK_MINIMO           100   caracteres; los chunks más cortos que no se
+                           pudieron unir a un vecino no se indexan
+    CHUNK_FUSION           300   caracteres; los chunks más cortos se unen a un
+                           vecino (0 desactiva la fusión)
     RETRIEVAL_TOP_K        5
     UMBRAL_RETRIEVAL       0.83  calibrado con e5 el 29/09; el plan decía 0.78,
                            que deja pasar consultas ajenas. Distinto de
@@ -66,6 +69,13 @@ UMBRAL_RETRIEVAL_POR_DEFECTO = 0.83
 #: (28 caracteres) salía primera en consultas ajenas.
 CHUNK_MINIMO_POR_DEFECTO = 100
 
+#: Los chunks más cortos se unen a un vecino: al anterior o, si empiezan con
+#: un título numerado, al siguiente. En la calibración con e5 (29/09), los
+#: fragmentos de menos de 300 caracteres eran el mejor chunk de muchas
+#: consultas ajenas (por ejemplo, «contabilidad» contra uno de 122).
+#: 0 desactiva la fusión.
+CHUNK_FUSION_POR_DEFECTO = 300
+
 _MENSAJE_INVALIDA = "La configuración del RAG no es válida."
 
 
@@ -92,6 +102,7 @@ class ConfigRAG:
     chunk_size: int = 1000
     chunk_overlap: int = 150
     chunk_minimo: int = CHUNK_MINIMO_POR_DEFECTO
+    chunk_fusion: int = CHUNK_FUSION_POR_DEFECTO
     top_k: int = 5
     umbral_retrieval: float = UMBRAL_RETRIEVAL_POR_DEFECTO
     chroma_path: Path = field(default_factory=lambda: resolver_ruta(CHROMA_PATH_POR_DEFECTO))
@@ -134,6 +145,11 @@ class ConfigRAG:
                 f"CHUNK_MINIMO ({self.chunk_minimo}) debe estar entre 0 y "
                 f"CHUNK_SIZE ({self.chunk_size}), sin llegar a CHUNK_SIZE"
             )
+        if not 0 <= self.chunk_fusion < self.chunk_size:
+            problemas.append(
+                f"CHUNK_FUSION ({self.chunk_fusion}) debe estar entre 0 y "
+                f"CHUNK_SIZE ({self.chunk_size}), sin llegar a CHUNK_SIZE"
+            )
         if self.top_k < 1:
             problemas.append("RETRIEVAL_TOP_K debe ser al menos 1")
         if not 0.0 < self.umbral_retrieval <= 1.0:
@@ -149,7 +165,8 @@ class ConfigRAG:
         return (
             f"modelo={self.modelo_embeddings} · proveedor={self.proveedor_embeddings}{url} · "
             f"lote={self.tamano_lote} · timeout={self.timeout_segundos:g}s · "
-            f"reintentos={self.reintentos} · chunks={self.chunk_size}/{self.chunk_overlap}/mín. {self.chunk_minimo} · "
+            f"reintentos={self.reintentos} · chunks={self.chunk_size}/{self.chunk_overlap}/mín. {self.chunk_minimo}"
+            f"/fusión {self.chunk_fusion} · "
             f"top_k={self.top_k} · umbral={self.umbral_retrieval} · "
             f"token={'presente' if self.tiene_token else 'AUSENTE'}"
         )
@@ -224,6 +241,7 @@ def cargar_config(entorno: Mapping[str, str] | None = None, *, usar_dotenv: bool
         chunk_size=_entero(entorno, "CHUNK_SIZE", 1000),
         chunk_overlap=_entero(entorno, "CHUNK_OVERLAP", 150),
         chunk_minimo=_entero(entorno, "CHUNK_MINIMO", CHUNK_MINIMO_POR_DEFECTO),
+        chunk_fusion=_entero(entorno, "CHUNK_FUSION", CHUNK_FUSION_POR_DEFECTO),
         top_k=_entero(entorno, "RETRIEVAL_TOP_K", 5),
         umbral_retrieval=_decimal(entorno, "UMBRAL_RETRIEVAL", UMBRAL_RETRIEVAL_POR_DEFECTO),
         chroma_path=resolver_ruta(_texto(entorno, "CHROMA_PATH") or CHROMA_PATH_POR_DEFECTO),
