@@ -75,6 +75,17 @@ def test_mapeo_pedagogico_es_deterministico():
 
     assert primera == segunda
 
+
+@pytest.mark.parametrize("perfil", list(PerfilDestinatario))
+def test_nivel_detalle_no_altera_el_mapeo_del_perfil(perfil):
+    especificaciones = [
+        construir_especificacion_pedagogica(perfil, nivel)
+        for nivel in NivelDetalle
+    ]
+
+    assert all(spec == especificaciones[0] for spec in especificaciones[1:])
+
+
 def test_fragmento_prompt_contiene_parametros_pedagogicos():
     from src.pedagogia import construir_fragmento_prompt_pedagogico
 
