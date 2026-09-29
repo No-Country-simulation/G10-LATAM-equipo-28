@@ -26,11 +26,13 @@ Variables del .env. Todas son opcionales, salvo el token para usar la API:
     CHUNK_SIZE             1000  caracteres
     CHUNK_OVERLAP          150   caracteres
     RETRIEVAL_TOP_K        5
-    UMBRAL_RETRIEVAL       0.78  (distinto de UMBRAL_FIDELIDAD, D-12)
+    UMBRAL_RETRIEVAL       0.82  provisional: el plan decía 0.78, que con e5
+                           deja pasar consultas ajenas (T2-06). Distinto de
+                           UMBRAL_FIDELIDAD (D-12)
     CHROMA_PATH            ./chroma_db; si es relativo, cuenta desde la raíz
                            del repo y no desde el directorio de trabajo
 
-Los decimales aceptan punto o coma: 0.78 y 0,78 valen lo mismo.
+Los decimales aceptan punto o coma: 0.82 y 0,82 valen lo mismo.
 """
 
 from __future__ import annotations
@@ -49,6 +51,11 @@ MODELO_POR_DEFECTO = "intfloat/multilingual-e5-base"
 PROVEEDOR_POR_DEFECTO = "hf-inference"
 DIMENSION_E5_BASE = 768
 CHROMA_PATH_POR_DEFECTO = "./chroma_db"
+
+#: Provisional desde T2-06 (29/09). El plan decía 0.78, pero con e5 dejaba
+#: pasar consultas ajenas (hasta 0.794), y las del tema empezaban en 0.853.
+#: Se calibra con unas 20 consultas del tema y 20 ajenas.
+UMBRAL_RETRIEVAL_POR_DEFECTO = 0.82
 
 _MENSAJE_INVALIDA = "La configuración del RAG no es válida."
 
@@ -76,7 +83,7 @@ class ConfigRAG:
     chunk_size: int = 1000
     chunk_overlap: int = 150
     top_k: int = 5
-    umbral_retrieval: float = 0.78
+    umbral_retrieval: float = UMBRAL_RETRIEVAL_POR_DEFECTO
     chroma_path: Path = field(default_factory=lambda: resolver_ruta(CHROMA_PATH_POR_DEFECTO))
 
     def __post_init__(self) -> None:
@@ -202,6 +209,6 @@ def cargar_config(entorno: Mapping[str, str] | None = None, *, usar_dotenv: bool
         chunk_size=_entero(entorno, "CHUNK_SIZE", 1000),
         chunk_overlap=_entero(entorno, "CHUNK_OVERLAP", 150),
         top_k=_entero(entorno, "RETRIEVAL_TOP_K", 5),
-        umbral_retrieval=_decimal(entorno, "UMBRAL_RETRIEVAL", 0.78),
+        umbral_retrieval=_decimal(entorno, "UMBRAL_RETRIEVAL", UMBRAL_RETRIEVAL_POR_DEFECTO),
         chroma_path=resolver_ruta(_texto(entorno, "CHROMA_PATH") or CHROMA_PATH_POR_DEFECTO),
     )

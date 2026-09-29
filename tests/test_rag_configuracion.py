@@ -33,7 +33,7 @@ def test_valores_por_defecto_del_plan():
     assert cfg.dimension_embeddings == 768
     assert (cfg.chunk_size, cfg.chunk_overlap) == (1000, 150)
     assert cfg.top_k == 5
-    assert cfg.umbral_retrieval == 0.78
+    assert cfg.umbral_retrieval == 0.82  # provisional desde T2-06; el plan decía 0.78
     assert cfg.tamano_lote == 32
     assert cfg.chroma_path == (RAIZ_REPO / "chroma_db").resolve()
     assert cfg.hf_token is None and not cfg.tiene_token

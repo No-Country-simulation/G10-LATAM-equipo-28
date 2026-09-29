@@ -15,7 +15,8 @@ Uso, desde la raíz del repo y con el .venv activo:
                        índice temporal. Sirve para revisar el flujo; los
                        puntajes no son los de e5.
 
-Criterio del plan: la consulta «Scrum Master» devuelve chunks sobre 0.78.
+Criterio del plan: la consulta «Scrum Master» devuelve chunks sobre
+UMBRAL_RETRIEVAL (0.78 en el plan; 0.82 provisional desde T2-06).
 """
 
 from __future__ import annotations
