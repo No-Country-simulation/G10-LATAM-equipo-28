@@ -43,10 +43,10 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
-from agent_state import AgentState
-from agentes.supervisor import construir_nodo_supervisor
-from Cliente_agemte import conectar_mcp, con_reintento_mcp, extraer_texto_resultado, extraer_lista_resultado, obtener_tools_langchain
-from seguridad.rate_limiter import RateLimiter
+from src.agent_state import AgentState
+from src.agentes.protocolos import GeneradorEstructurado
+from src.agentes.supervisor import construir_nodo_supervisor
+from src.Cliente_agemte import conectar_mcp, con_reintento_mcp, extraer_texto_resultado, extraer_lista_resultado, obtener_tools_langchain
 
 PREFIJO_FUENTES = "fuentes/"
 MAX_REINTENTOS_REDACTOR = 2
@@ -149,7 +149,9 @@ async def nodo_ingesta(state: AgentState) -> dict:
     # Por ahora el texto_extraido queda descargado pero sin indexar; el
     # Investigador stub no lo usa todavía.
 
-    return {"estado": "ingesta_completada"}
+    # El texto descargado se indexará en rag/ (pendiente); hoy no hay una clave
+    # válida del AgentState que escribir, así que el nodo no actualiza nada.
+    return {}
 
 
 # --------------------------------------------------------------------------
@@ -302,24 +304,23 @@ def nodo_modificador(state: AgentState) -> dict:
 # Construcción del grafo
 # --------------------------------------------------------------------------
 
-async def construir_grafo(rate_limiter: RateLimiter | None = None):
+async def construir_grafo(generador: GeneradorEstructurado):
     """
-    rate_limiter: compartido entre los nodos con LLM real (hoy solo
-    Supervisor; se suma Investigador/Redactor/Revisor/Modificador a
-    medida que se escriben). Si no se pasa, se crea uno nuevo por
-    default -- útil para scripts de prueba sueltos, pero en app.py
-    conviene crear UNA instancia y reusarla entre reruns.
-    """
-    if rate_limiter is None:
-        rate_limiter = RateLimiter()
+    generador: salida estructurada inyectada que consumen los nodos con LLM
+    real (hoy solo el Supervisor; se suman Investigador/Redactor/Revisor/
+    Modificador a medida que se escriben).
 
+    Decisión A3: el grafo NO elige proveedor ni rate limiter. Se construye una
+    sola vez en `app.py` (p. ej. `GeneradorLangchain(get_llm())`) y se inyecta.
+    En pruebas se pasa un doble (FakeGenerator).
+    """
     builder = StateGraph(AgentState)
 
     builder.add_node("buscador_documentos", nodo_buscador_documentos)
     builder.add_node("confirmar_ejecucion", nodo_confirmar_ejecucion)
     builder.add_node("ingesta", nodo_ingesta)
     builder.add_node("validacion", nodo_validacion)
-    builder.add_node("supervisor", construir_nodo_supervisor(rate_limiter))
+    builder.add_node("supervisor", construir_nodo_supervisor(generador))
     builder.add_node("investigador", nodo_investigador)
     builder.add_node("redactor_pedagogico", nodo_redactor_pedagogico)
     builder.add_node("critico_revisor", nodo_critico_revisor)
