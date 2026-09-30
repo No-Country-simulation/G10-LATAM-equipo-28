@@ -34,9 +34,10 @@ POR QUÉ ESTO ES MEJOR QUE CUALQUIERA DE LOS DOS SOLO
 · El verificador LLM sí evalúa si la afirmación SE DERIVA de la fuente, pero
   cuesta una llamada, no es determinista y depende de la cuota.
 
-· En cascada, el LLM se gasta solo donde el coseno no es concluyente. En los
-  documentos de prueba, la banda dudosa suele ser el 20-30% de las afirmaciones:
-  se reduce el costo ~70% y se conserva el juicio donde hace falta.
+· En cascada, el LLM se gasta solo donde el coseno no es concluyente. En la
+  calibración con e5 (29/09), con las bandas sugeridas va al juez el 48% de
+  las 40 afirmaciones de prueba: se ahorra ~50% de las llamadas y se conserva
+  el juicio donde hace falta.
 
 · Para la demo en vivo: la mayoría de las afirmaciones se resuelven de forma
   DETERMINISTA. Menos varianza entre ensayo y presentación.
@@ -102,7 +103,7 @@ class Veredicto:
     afirmacion: Afirmacion
     metodo: MetodoVeredicto
     similitud: float
-    puntaje: float  # 1.0 soportada · 0.5 parcial · 0.0 no soportada
+    puntaje: float  # 1.0 soportada · 0.5 parcial · 0.0 no soportada (sin juez: 0 a 1)
     chunk_mas_cercano: str | None
     detalle: str
 
@@ -198,8 +199,13 @@ def calcular_fidelidad(
     """
     Calcula `anclaje_fuente_score` combinando coseno y verificador LLM.
 
-    Si `juez_llm` es None, la banda dudosa se resuelve con el coseno crudo
-    (puntaje = similitud). Sirve para desarrollo y para el modo "sin LLM".
+    Si `juez_llm` es None, la zona dudosa se resuelve con el coseno reescalado
+    entre las bandas: (similitud - banda_baja) / (banda_alta - banda_baja),
+    recortado entre 0 y 1. Con e5 el coseno casi nunca baja de ~0.73, así que
+    usarlo crudo inflaba el puntaje: con las bandas sugeridas por la
+    calibración (0.8457 / 0.8885), una afirmación en el medio de la zona
+    dudosa valía 0.867 y ahora vale 0.5. Sirve para desarrollo y para el
+    modo "sin LLM".
 
     `vectores_chunks` (recomendado en producción): los vectores de los chunks
     tal como ya están guardados en Chroma, en el mismo orden que `chunks`.
@@ -269,11 +275,12 @@ def calcular_fidelidad(
 
         # --- Zona dudosa: aquí sí vale la pena preguntarle al LLM ---
         if juez_llm is None:
+            puntaje = _reescalar(mejor_sim, banda_baja, banda_alta)
             veredictos.append(
                 Veredicto(
-                    afirmacion, "coseno_bajo", mejor_sim, mejor_sim, mejor_chunk.chunk_id,
+                    afirmacion, "coseno_bajo", mejor_sim, puntaje, mejor_chunk.chunk_id,
                     f"Zona dudosa ({mejor_sim:.2f}) sin verificador LLM: "
-                    f"se usa la similitud cruda.",
+                    f"puntaje {puntaje:.2f}, reescalado entre las bandas.",
                 )
             )
             continue
@@ -291,6 +298,18 @@ def calcular_fidelidad(
 
     score = sum(v.puntaje for v in veredictos) / len(veredictos)
     return ResultadoFidelidad(score=score, veredictos=veredictos, llamadas_al_llm=llamadas)
+
+
+def _reescalar(similitud: float, banda_baja: float, banda_alta: float) -> float:
+    """
+    Lleva la similitud a 0-1 con las bandas: (similitud - baja) / (alta - baja).
+
+    Es la misma cuenta que `reescalar()` de `src/rag/calibracion.py`, con la
+    que se midió el efecto en la calibración con e5 del 29/09.
+    """
+    if banda_alta <= banda_baja:
+        return 1.0 if similitud >= banda_alta else 0.0
+    return min(1.0, max(0.0, (similitud - banda_baja) / (banda_alta - banda_baja)))
 
 
 def _chunks_relevantes(

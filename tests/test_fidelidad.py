@@ -10,6 +10,7 @@ Ejecutar:  pytest tests/test_fidelidad.py -v
 
 from __future__ import annotations
 
+import math
 import sys
 from pathlib import Path
 
@@ -168,15 +169,41 @@ def test_veredicto_desconocido_del_juez_no_rompe():
     assert r.score == 0.0
 
 
-def test_sin_juez_la_zona_dudosa_usa_la_similitud():
+def test_sin_juez_la_zona_dudosa_reescala_la_similitud():
     """Modo sin LLM: sirve para desarrollo y si se agota la cuota."""
     r = calcular_fidelidad(
         [af("La red privada de Oracle usa subredes y gateway")],
         CHUNKS, embeder_falso, juez_llm=None,
         banda_alta=0.95, banda_baja=0.10,
     )
+    similitud = r.veredictos[0].similitud
     assert r.llamadas_al_llm == 0
-    assert 0.0 < r.score < 1.0
+    assert 0.10 <= similitud < 0.95
+    assert r.score == pytest.approx((similitud - 0.10) / (0.95 - 0.10))
+
+
+def test_sin_juez_el_reescalado_no_infla_el_puntaje():
+    """
+    Con e5 el coseno casi nunca baja de ~0.73. Con las bandas sugeridas por la
+    calibración (0.8457 / 0.8885), una afirmación en el medio de la zona
+    dudosa vale 0.5, no su coseno crudo (0.867).
+    """
+    baja, alta = 0.8457, 0.8885
+    medio = (baja + alta) / 2
+
+    def embeder_a_coseno(textos):
+        # Cada afirmación queda a coseno `medio` del único chunk, [1, 0].
+        return [[medio, math.sqrt(1 - medio**2)] for _ in textos]
+
+    r = calcular_fidelidad(
+        [af("Una afirmación cualquiera")],
+        [Chunk("c1", "Un chunk cualquiera")],
+        embeder_a_coseno,
+        vectores_chunks=[[1.0, 0.0]],
+        banda_alta=alta, banda_baja=baja,
+    )
+    assert r.veredictos[0].similitud == pytest.approx(medio)
+    assert r.score == pytest.approx(0.5)
 
 
 def test_el_ahorro_de_llamadas_es_real():
