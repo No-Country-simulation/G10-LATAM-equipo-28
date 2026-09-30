@@ -33,6 +33,21 @@ PrepararPedagogia = Callable[[PerfilDestinatario, NivelDetalle], Any]
 MENSAJE_ABSTENCION = "La evidencia disponible no permite redactar con respaldo."
 
 
+def obtener_solicitud_redactor(state: StateRedactor) -> SolicitudAdaptacion:
+    """Valida los datos de ingesta y Supervisor contra el contrato existente.
+
+    No usa tema_consulta como documento ni completa datos obligatorios ausentes.
+    Los parámetros opcionales ausentes usan los defaults del contrato oficial.
+    """
+    datos = {campo: state.get(campo) for campo in (
+        "documento_titulo", "documento_contenido", "perfil_destinatario", "formato_salida",
+    )}
+    for campo in ("nicho_sector", "nivel_detalle"):
+        if state.get(campo) is not None:
+            datos[campo] = state[campo]
+    return SolicitudAdaptacion.model_validate(datos)
+
+
 def adaptar_chunks_fuente(chunks: Any) -> list[ChunkFuente]:
     """Proyecta DTOs RAG/investigador al core sin inventar IDs ni mutar el state.
 
@@ -108,7 +123,11 @@ def construir_nodo_redactor(
         try:
             if state.get("fuente_confirmada") is not True:
                 return _fallo(MENSAJE_ABSTENCION, intentos)
-            fuentes = adaptar_chunks_fuente(state.get("chunks_fuente_confirmados"))
+            # Un canal nuevo vacío no debe revivir evidencia vieja del legacy.
+            chunks = state.get("chunks_fuente_estructurados") if (
+                "chunks_fuente_estructurados" in state
+            ) else state.get("chunks_fuente_confirmados")
+            fuentes = adaptar_chunks_fuente(chunks)
             if not fuentes:
                 return _fallo(MENSAJE_ABSTENCION, intentos)
             solicitud = obtener_solicitud(state)
