@@ -39,8 +39,8 @@ def test_adapter_usa_get_llm_y_salida_estructurada_de_la_api_compartida():
     llm = FakeLLM(runnable)
     factory_calls = []
 
-    def get_llm(*, mensajes, rate_limiter):
-        factory_calls.append((mensajes, rate_limiter))
+    def get_llm(*, mensajes, rate_limiter, max_tokens):
+        factory_calls.append((mensajes, rate_limiter, max_tokens))
         return llm
 
     generator = GeneradorLLMClient(get_llm, rate_limiter)
@@ -49,7 +49,33 @@ def test_adapter_usa_get_llm_y_salida_estructurada_de_la_api_compartida():
     )
 
     assert salida == {"texto": "salida tipada"}
-    assert factory_calls == [([{"role": "user", "content": "instrucciones"}], rate_limiter)]
+    assert factory_calls == [
+        ([{"role": "user", "content": "instrucciones"}], rate_limiter, 4096)
+    ]
+    assert llm.output_model is SalidaPrueba
+    assert runnable.messages == [{"role": "user", "content": "instrucciones"}]
+
+
+def test_adapter_permite_configurar_presupuesto_de_salida():
+    rate_limiter = object()
+    respuesta = SalidaPrueba(texto="salida con presupuesto configurable")
+    runnable = FakeRunnable(respuesta)
+    llm = FakeLLM(runnable)
+    factory_calls = []
+
+    def get_llm(*, mensajes, rate_limiter, max_tokens):
+        factory_calls.append((mensajes, rate_limiter, max_tokens))
+        return llm
+
+    generator = GeneradorLLMClient(get_llm, rate_limiter, max_tokens=2048)
+    salida = asyncio.run(
+        generator.generate(prompt="instrucciones", output_model=SalidaPrueba)
+    )
+
+    assert salida == {"texto": "salida con presupuesto configurable"}
+    assert factory_calls == [
+        ([{"role": "user", "content": "instrucciones"}], rate_limiter, 2048)
+    ]
     assert llm.output_model is SalidaPrueba
     assert runnable.messages == [{"role": "user", "content": "instrucciones"}]
 
