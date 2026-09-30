@@ -52,6 +52,9 @@ class CodigoError(_EnumConAlias):
     # --- pipeline ---
     FALLO_INDEXACION = "FALLO_INDEXACION"
     FALLO_RECUPERACION = "FALLO_RECUPERACION"
+    # El Investigador no encontró el tema en el documento, ni tras la ronda
+    # de aclaración (HITL). No es una falla técnica: es una respuesta honesta.
+    TEMA_NO_CUBIERTO = "TEMA_NO_CUBIERTO"
     FALLO_LLM = "FALLO_LLM"
     SALIDA_INVALIDA = "SALIDA_INVALIDA"
     FALLO_VERIFICACION = "FALLO_VERIFICACION"
@@ -91,6 +94,10 @@ MENSAJE_POR_DEFECTO: dict[CodigoError, str] = {
     CodigoError.FALLO_RECUPERACION: (
         "No se pudo recuperar el contexto del documento. Intenta de nuevo."
     ),
+    CodigoError.TEMA_NO_CUBIERTO: (
+        "El documento no trata ese tema. Elige uno de los temas que sí cubre o "
+        "sube otro documento."
+    ),
     CodigoError.FALLO_LLM: (
         "El servicio de inteligencia artificial no respondio. Intenta en unos minutos."
     ),
@@ -120,6 +127,7 @@ ETAPA_POR_CODIGO: dict[CodigoError, EtapaPipeline] = {
     CodigoError.FORMATO_NO_DISPONIBLE_EN_MVP: EtapaPipeline.VALIDACION,
     CodigoError.FALLO_INDEXACION: EtapaPipeline.INDEXACION,
     CodigoError.FALLO_RECUPERACION: EtapaPipeline.RECUPERACION,
+    CodigoError.TEMA_NO_CUBIERTO: EtapaPipeline.RECUPERACION,
     CodigoError.FALLO_LLM: EtapaPipeline.GENERACION,
     CodigoError.SALIDA_INVALIDA: EtapaPipeline.GENERACION,
     CodigoError.FALLO_VERIFICACION: EtapaPipeline.VERIFICACION,
@@ -222,6 +230,12 @@ class ErrorFormatoNoDisponible(NuevaMenteError):
 
 class ErrorIndexacion(NuevaMenteError):
     codigo = CodigoError.FALLO_INDEXACION
+
+
+class ErrorTemaNoCubierto(NuevaMenteError):
+    """El tema pedido no está en el documento, tampoco después de la aclaración."""
+
+    codigo = CodigoError.TEMA_NO_CUBIERTO
 
 
 class ErrorLLM(NuevaMenteError):
