@@ -1,0 +1,10 @@
+# NuevaMente — dependencias de desarrollo
+#
+# requirements.txt es el de Frank y no se toca: lo que corre la app.
+# Esto agrega lo que solo hace falta para trabajar en el código.
+#
+#   pip install -r requirements-dev.txt     (instala las dos cosas)
+
+-r requirements.txt
+
+pytest>=8.0

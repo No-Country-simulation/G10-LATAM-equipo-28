@@ -10,6 +10,7 @@
 *.pem
 oci_api_key*
 .oci/
+.streamlit/secrets.toml
 
 # --- Python ---
 __pycache__/
@@ -21,8 +22,10 @@ venv/
 
 # --- Datos generados ---
 data/vector_store/
+chroma_db/
 data/uploads/
 *.log
+checkpoints.sqlite*
 
 # --- Sistema ---
 .DS_Store
