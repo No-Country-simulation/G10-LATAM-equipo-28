@@ -54,7 +54,7 @@ no crece por preflight fallido. El nodo no realiza reintentos internos.
 | spec/chunks → Redactor | `redactar_pedagogicamente(SolicitudAdaptacion, chunks, spec, generador, feedback)` (Sergio) | Grafo usa stub, no core | Factory nueva adapta chunks/entrada y delega al core real |
 | Redactor → state | ResultadoRedactor con DTO interno (Sergio) | Estudio/conceptos/prerrequisitos necesitan separarse del contenido | Nodo convierte con ContenidoAdaptado/MetadatosAprendizaje y devuelve canales existentes |
 | state → siguiente | Arista incondicional a `critico_revisor` (Franklin), juez/revisor stub | Error/abstención podría alcanzar aprobación/persistencia stub | Condicional con `enrutar_tras_redactor`, ruta `error -> END`; éxito sigue al nodo existente |
-| revisión → persistencia | `evaluacion_calidad`, `aprobado`, OCI (Franklin/Oscar) | Revisión y persistencia siguen stubs; falta interfaz fidelidad | No implementado aquí; owners acuerdan firma/calibración y almacenamiento |
+| revisión → persistencia | `evaluacion_calidad`, `aprobado`, OCI (Franklin/Oscar) | Revisión es stub; Guardado usa MCP real sin validar PaqueteEducativo en grafo; falta interfaz fidelidad | No implementado aquí; owners acuerdan firma/calibración y validación del paquete |
 
 ## Cambios mínimos propuestos a Franklin — no aplicados
 
@@ -131,6 +131,8 @@ todavía debe resolver identidad de documento y esquema único de chunk.
 - PR #3 review/merge; review del nuevo nodo; composición/producers de Franklin.
 - RAG/investigador y Supervisor reales todavía en ramas de sus owners; no se
   prometió un pipeline end-to-end funcional desde el dev auditado.
+- Guardado final sí invoca el MCP real; no es un stub. La revisión previa y
+  la validación de PaqueteEducativo todavía no están conectadas en grafo.
 - D-03: `MAX_REINTENTOS_REDACTOR=2`, con contador desde la primera generación,
   corta a las **2 generaciones totales**. Confirmar en demo si se desean
   1 inicial + 2 reintentos = 3 intentos. No se cambió esa lógica.
