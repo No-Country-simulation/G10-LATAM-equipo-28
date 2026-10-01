@@ -44,13 +44,13 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
-from agent_state import AgentState
+from src.agent_state import AgentState
 from src.agentes.generador_llm_client import GeneradorLLMClient
 from src.agentes.redactor import (
     construir_nodo_redactor, enrutar_tras_redactor, obtener_solicitud_redactor,
 )
-from Cliente_agemte import conectar_mcp, con_reintento_mcp, extraer_texto_resultado, extraer_lista_resultado, obtener_tools_langchain
-from seguridad.rate_limiter import RateLimiter
+from src.Cliente_agemte import conectar_mcp, con_reintento_mcp, extraer_texto_resultado, extraer_lista_resultado, obtener_tools_langchain
+from src.seguridad.rate_limiter import RateLimiter
 
 PREFIJO_FUENTES = "fuentes/"
 MAX_REINTENTOS_REDACTOR = 2
@@ -301,17 +301,18 @@ async def construir_grafo(
     construir_supervisor=None,
 ):
     """
-    rate_limiter: compartido entre los nodos con LLM real (hoy
-    Supervisor y Redactor; se suma Investigador/Revisor/Modificador a
-    medida que se escriben). Si no se pasa, se crea uno nuevo por
-    default -- útil para scripts de prueba sueltos, pero en app.py
-    conviene crear UNA instancia y reusarla entre reruns.
+    rate_limiter: compartido entre los nodos con LLM real (hoy Supervisor
+    y Redactor; se suma Investigador/Revisor/Modificador a medida que se
+    escriben). Si no se pasa, se crea uno nuevo por default -- útil para
+    scripts de prueba sueltos, pero en app.py conviene crear UNA instancia
+    y reusarla entre reruns.
 
-    preparar_pedagogia: preparar_explicacion_pedagogica de PR #3; mientras
-    esté pendiente puede inyectarse desde su composición, sin copiar el mapping.
+    preparar_pedagogia: preparar_explicacion_pedagogica de #3; puede
+    inyectarse desde su composición, sin copiar el mapping.
     get_llm_factory: get_llm oficial; permite probar sin llamadas externas.
-    construir_supervisor: conserva la firma actual factory(rate_limiter).
-    No implementa ni reemplaza el trabajo pendiente del carril de orquestación.
+    construir_supervisor: factory(rate_limiter) -> nodo; conserva el patrón
+    de dependencias inyectadas del carril de orquestación (Decisión A3: el
+    grafo NO elige proveedor; se construye una vez en `app.py` y se inyecta).
     """
     if rate_limiter is None:
         rate_limiter = RateLimiter()
@@ -319,11 +320,15 @@ async def construir_grafo(
         from src.pedagogia.nodo import preparar_explicacion_pedagogica
         preparar_pedagogia = preparar_explicacion_pedagogica
     if get_llm_factory is None:
-        from seguridad.llm_client import get_llm
+        from src.seguridad.llm_client import get_llm
         get_llm_factory = get_llm
     if construir_supervisor is None:
-        from agentes.supervisor import construir_nodo_supervisor
-        construir_supervisor = construir_nodo_supervisor
+        from src.agentes.supervisor import construir_nodo_supervisor
+
+        def construir_supervisor(rate_limiter):
+            return construir_nodo_supervisor(
+                GeneradorLLMClient(get_llm_factory, rate_limiter)
+            )
 
     redactor = construir_nodo_redactor(
         GeneradorLLMClient(get_llm_factory, rate_limiter),
