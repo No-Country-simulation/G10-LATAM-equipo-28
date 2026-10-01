@@ -14,9 +14,11 @@ Nodos REALES (llaman a OCI vía Cliente_agemte.py, ya validado):
 Nodos con LLM real:
   - supervisor (agentes/supervisor.py, IntencionOut vía Groq)
   - redactor_pedagogico (core real con dependencias inyectadas)
+  - investigador (agentes/investigador.py) -- real solo si se inyecta un
+    recuperador; por defecto sigue el stub porque rag/ (Chroma) no está en dev
 
 Nodos STUB (marcados # TODO, esperando sus archivos en agentes/):
-  - investigador, critico_revisor, modificador
+  - critico_revisor, modificador
 
 TODO: la rama "aclaracion" de enrutar_tras_investigador hoy corta a END.
 Falta un nodo de interrupt propio (1 ronda HITL, sección 2 del 4to spec)
@@ -299,6 +301,7 @@ async def construir_grafo(
     preparar_pedagogia=None,
     get_llm_factory=None,
     construir_supervisor=None,
+    recuperador=None,
 ):
     """
     rate_limiter: compartido entre los nodos con LLM real (hoy Supervisor
@@ -313,6 +316,9 @@ async def construir_grafo(
     construir_supervisor: factory(rate_limiter) -> nodo; conserva el patrón
     de dependencias inyectadas del carril de orquestación (Decisión A3: el
     grafo NO elige proveedor; se construye una vez en `app.py` y se inyecta).
+    recuperador: vector store (rag/vectorstore.py). Si se pasa, el nodo
+    Investigador real reemplaza al stub; si no, se mantiene el stub porque
+    rag/ (Chroma) todavía no está en dev.
     """
     if rate_limiter is None:
         rate_limiter = RateLimiter()
@@ -336,6 +342,14 @@ async def construir_grafo(
         obtener_solicitud_redactor,
     )
 
+    if recuperador is None:
+        nodo_investigador_activo = nodo_investigador
+    else:
+        from src.agentes.investigador import construir_nodo_investigador
+        nodo_investigador_activo = construir_nodo_investigador(
+            recuperador, GeneradorLLMClient(get_llm_factory, rate_limiter)
+        )
+
     builder = StateGraph(AgentState)
 
     builder.add_node("buscador_documentos", nodo_buscador_documentos)
@@ -343,7 +357,7 @@ async def construir_grafo(
     builder.add_node("ingesta", nodo_ingesta)
     builder.add_node("validacion", nodo_validacion)
     builder.add_node("supervisor", construir_supervisor(rate_limiter))
-    builder.add_node("investigador", nodo_investigador)
+    builder.add_node("investigador", nodo_investigador_activo)
     builder.add_node("redactor_pedagogico", redactor)
     builder.add_node("critico_revisor", nodo_critico_revisor)
     builder.add_node("guardado_final", nodo_guardado_final)
