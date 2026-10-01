@@ -14,14 +14,16 @@ Nodos REALES (llaman a OCI vía Cliente_agemte.py, ya validado):
 Nodos con LLM real:
   - supervisor (agentes/supervisor.py, IntencionOut vía Groq)
   - redactor_pedagogico (core real con dependencias inyectadas)
+  - investigador (agentes/investigador.py) -- real solo si se inyecta un
+    recuperador; por defecto sigue el stub porque rag/ (Chroma) no está en dev
 
 Nodos STUB (marcados # TODO, esperando sus archivos en agentes/):
-  - investigador, critico_revisor, modificador
+  - critico_revisor, modificador
 
-TODO: la rama "aclaracion" de enrutar_tras_investigador hoy corta a END.
-Falta un nodo de interrupt propio (1 ronda HITL, sección 2 del 4to spec)
-que use el mensaje_aclaracion real que va a generar agente_investigador.py
--- no se puede escribir bien sin ese archivo, queda pendiente a propósito.
+HITL de aclaración (1 ronda): la rama "aclaracion" de enrutar_tras_investigador
+entra a nodo_aclaracion, que pausa el grafo y expone el mensaje_aclaracion real
+del agente_investigador.py; la respuesta se guarda en respuesta_aclaracion_usuario
+y el grafo termina. app.py decide si reinicia con otro tema o pide otro documento.
 
 Checkpointer: SqliteSaver con conexión manual (aiosqlite.connect()).
 
@@ -189,9 +191,26 @@ def nodo_investigador(state: AgentState) -> dict:
 
 
 def enrutar_tras_investigador(state: AgentState) -> str:
-    # TODO: "aclaracion" hoy corta a END -- falta el nodo de interrupt
-    # propio (ver nota al inicio del archivo).
     return "match" if state.get("fuente_confirmada") else "aclaracion"
+
+
+# --------------------------------------------------------------------------
+# HITL: aclaración (1 ronda) -- REAL
+# --------------------------------------------------------------------------
+
+def nodo_aclaracion(state: AgentState) -> dict:
+    """
+    Pausa el grafo y expone el `mensaje_aclaracion` del Investigador.
+
+    HITL de 1 ronda: la UI resume con Command(resume={"respuesta": str | None}).
+    La respuesta se guarda en `respuesta_aclaracion_usuario` y el grafo termina;
+    `app.py` decide si reinicia con otro tema o pide subir otro documento.
+    """
+    respuesta = interrupt({
+        "tipo": "aclaracion",
+        "mensaje_aclaracion": state.get("mensaje_aclaracion"),
+    })
+    return {"respuesta_aclaracion_usuario": respuesta.get("respuesta")}
 
 
 # --------------------------------------------------------------------------
@@ -299,6 +318,7 @@ async def construir_grafo(
     preparar_pedagogia=None,
     get_llm_factory=None,
     construir_supervisor=None,
+    recuperador=None,
 ):
     """
     rate_limiter: compartido entre los nodos con LLM real (hoy Supervisor
@@ -313,6 +333,9 @@ async def construir_grafo(
     construir_supervisor: factory(rate_limiter) -> nodo; conserva el patrón
     de dependencias inyectadas del carril de orquestación (Decisión A3: el
     grafo NO elige proveedor; se construye una vez en `app.py` y se inyecta).
+    recuperador: vector store (rag/vectorstore.py). Si se pasa, el nodo
+    Investigador real reemplaza al stub; si no, se mantiene el stub porque
+    rag/ (Chroma) todavía no está en dev.
     """
     if rate_limiter is None:
         rate_limiter = RateLimiter()
@@ -336,6 +359,14 @@ async def construir_grafo(
         obtener_solicitud_redactor,
     )
 
+    if recuperador is None:
+        nodo_investigador_activo = nodo_investigador
+    else:
+        from src.agentes.investigador import construir_nodo_investigador
+        nodo_investigador_activo = construir_nodo_investigador(
+            recuperador, GeneradorLLMClient(get_llm_factory, rate_limiter)
+        )
+
     builder = StateGraph(AgentState)
 
     builder.add_node("buscador_documentos", nodo_buscador_documentos)
@@ -343,7 +374,8 @@ async def construir_grafo(
     builder.add_node("ingesta", nodo_ingesta)
     builder.add_node("validacion", nodo_validacion)
     builder.add_node("supervisor", construir_supervisor(rate_limiter))
-    builder.add_node("investigador", nodo_investigador)
+    builder.add_node("investigador", nodo_investigador_activo)
+    builder.add_node("aclaracion", nodo_aclaracion)
     builder.add_node("redactor_pedagogico", redactor)
     builder.add_node("critico_revisor", nodo_critico_revisor)
     builder.add_node("guardado_final", nodo_guardado_final)
@@ -364,8 +396,9 @@ async def construir_grafo(
     builder.add_edge("supervisor", "investigador")
     builder.add_conditional_edges(
         "investigador", enrutar_tras_investigador,
-        {"match": "redactor_pedagogico", "aclaracion": END},
+        {"match": "redactor_pedagogico", "aclaracion": "aclaracion"},
     )
+    builder.add_edge("aclaracion", END)
     builder.add_conditional_edges(
         "redactor_pedagogico", enrutar_tras_redactor,
         {"critico_revisor": "critico_revisor", "error": END},
