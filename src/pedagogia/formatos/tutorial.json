@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "formato": "Tutorial",
+  "nombre": "Guía Práctica Paso a Paso (Tutorial)",
+  "campos_obligatorios": [
+    "anclaje",
+    "paso_numero",
+    "titulo_paso",
+    "instruccion",
+    "resultado_esperado"
+  ],
+  "campos_opcionales": [
+    "advertencia"
+  ],
+  "reglas": [
+    "Los pasos comienzan en 1 y son consecutivos, sin saltos.",
+    "Cada paso tiene un título corto y accionable.",
+    "La instrucción indica qué hace quien estudia.",
+    "El resultado esperado permite verificar si el paso salió bien.",
+    "La advertencia, cuando existe, describe un error común o riesgo del paso."
+  ],
+  "fuente": "docs/02_Decision-gate_v2_RESUELTO.md §2.2; src/contracts/formatos.py"
+}

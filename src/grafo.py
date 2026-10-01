@@ -13,9 +13,10 @@ Nodos REALES (llaman a OCI vía Cliente_agemte.py, ya validado):
 
 Nodos con LLM real:
   - supervisor (agentes/supervisor.py, IntencionOut vía Groq)
+  - redactor_pedagogico (core real con dependencias inyectadas)
 
 Nodos STUB (marcados # TODO, esperando sus archivos en agentes/):
-  - investigador, redactor_pedagogico, critico_revisor, modificador
+  - investigador, critico_revisor, modificador
 
 TODO: la rama "aclaracion" de enrutar_tras_investigador hoy corta a END.
 Falta un nodo de interrupt propio (1 ronda HITL, sección 2 del 4to spec)
@@ -44,9 +45,12 @@ from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
 from src.agent_state import AgentState
-from src.agentes.protocolos import GeneradorEstructurado
-from src.agentes.supervisor import construir_nodo_supervisor
+from src.agentes.generador_llm_client import GeneradorLLMClient
+from src.agentes.redactor import (
+    construir_nodo_redactor, enrutar_tras_redactor, obtener_solicitud_redactor,
+)
 from src.Cliente_agemte import conectar_mcp, con_reintento_mcp, extraer_texto_resultado, extraer_lista_resultado, obtener_tools_langchain
+from src.seguridad.rate_limiter import RateLimiter
 
 PREFIJO_FUENTES = "fuentes/"
 MAX_REINTENTOS_REDACTOR = 2
@@ -146,12 +150,15 @@ async def nodo_ingesta(state: AgentState) -> dict:
 
     # TODO (rag/ pendiente): chunking + embeddings (HuggingFace multilingual-e5-base)
     # + indexado en Chroma (colección documento_activo, umbral 0.78).
-    # Por ahora el texto_extraido queda descargado pero sin indexar; el
-    # Investigador stub no lo usa todavía.
-
-    # El texto descargado se indexará en rag/ (pendiente); hoy no hay una clave
-    # válida del AgentState que escribir, así que el nodo no actualiza nada.
-    return {}
+    # Conserva la fuente real para SolicitudAdaptacion. Invalida evidencia de
+    # una ejecución anterior; RAG/Investigador deben confirmar la nueva fuente.
+    return {
+        "estado": "ingesta_completada",
+        "documento_titulo": documento["nombre"],
+        "documento_contenido": documento["texto_extraido"],
+        "chunks_fuente_estructurados": None,
+        "fuente_confirmada": None,
+    }
 
 
 # --------------------------------------------------------------------------
@@ -185,24 +192,6 @@ def enrutar_tras_investigador(state: AgentState) -> str:
     # TODO: "aclaracion" hoy corta a END -- falta el nodo de interrupt
     # propio (ver nota al inicio del archivo).
     return "match" if state.get("fuente_confirmada") else "aclaracion"
-
-
-# --------------------------------------------------------------------------
-# Redactor Pedagógico (STUB)
-# --------------------------------------------------------------------------
-
-def nodo_redactor_pedagogico(state: AgentState) -> dict:
-    # TODO: generación real vía LLM (schema por formato_salida, sección 7/10).
-    intentos = state.get("intentos_redactor", 0) + 1
-    return {
-        "contenido_adaptado": {
-            "titulo": "[STUB] Título de ejemplo",
-            "introduccion_contextualizada": "[STUB]",
-            "items": [],
-        },
-        "metadatos": {"perfil_aplicado": state.get("perfil_destinatario", "")},
-        "intentos_redactor": intentos,
-    }
 
 
 # --------------------------------------------------------------------------
@@ -304,25 +293,58 @@ def nodo_modificador(state: AgentState) -> dict:
 # Construcción del grafo
 # --------------------------------------------------------------------------
 
-async def construir_grafo(generador: GeneradorEstructurado):
+async def construir_grafo(
+    rate_limiter: RateLimiter | None = None,
+    *,
+    preparar_pedagogia=None,
+    get_llm_factory=None,
+    construir_supervisor=None,
+):
     """
-    generador: salida estructurada inyectada que consumen los nodos con LLM
-    real (hoy solo el Supervisor; se suman Investigador/Redactor/Revisor/
-    Modificador a medida que se escriben).
+    rate_limiter: compartido entre los nodos con LLM real (hoy Supervisor
+    y Redactor; se suma Investigador/Revisor/Modificador a medida que se
+    escriben). Si no se pasa, se crea uno nuevo por default -- útil para
+    scripts de prueba sueltos, pero en app.py conviene crear UNA instancia
+    y reusarla entre reruns.
 
-    Decisión A3: el grafo NO elige proveedor ni rate limiter. Se construye una
-    sola vez en `app.py` (p. ej. `GeneradorLangchain(get_llm())`) y se inyecta.
-    En pruebas se pasa un doble (FakeGenerator).
+    preparar_pedagogia: preparar_explicacion_pedagogica de #3; puede
+    inyectarse desde su composición, sin copiar el mapping.
+    get_llm_factory: get_llm oficial; permite probar sin llamadas externas.
+    construir_supervisor: factory(rate_limiter) -> nodo; conserva el patrón
+    de dependencias inyectadas del carril de orquestación (Decisión A3: el
+    grafo NO elige proveedor; se construye una vez en `app.py` y se inyecta).
     """
+    if rate_limiter is None:
+        rate_limiter = RateLimiter()
+    if preparar_pedagogia is None:
+        from src.pedagogia.nodo import preparar_explicacion_pedagogica
+        preparar_pedagogia = preparar_explicacion_pedagogica
+    if get_llm_factory is None:
+        from src.seguridad.llm_client import get_llm
+        get_llm_factory = get_llm
+    if construir_supervisor is None:
+        from src.agentes.supervisor import construir_nodo_supervisor
+
+        def construir_supervisor(rate_limiter):
+            return construir_nodo_supervisor(
+                GeneradorLLMClient(get_llm_factory, rate_limiter)
+            )
+
+    redactor = construir_nodo_redactor(
+        GeneradorLLMClient(get_llm_factory, rate_limiter),
+        preparar_pedagogia,
+        obtener_solicitud_redactor,
+    )
+
     builder = StateGraph(AgentState)
 
     builder.add_node("buscador_documentos", nodo_buscador_documentos)
     builder.add_node("confirmar_ejecucion", nodo_confirmar_ejecucion)
     builder.add_node("ingesta", nodo_ingesta)
     builder.add_node("validacion", nodo_validacion)
-    builder.add_node("supervisor", construir_nodo_supervisor(generador))
+    builder.add_node("supervisor", construir_supervisor(rate_limiter))
     builder.add_node("investigador", nodo_investigador)
-    builder.add_node("redactor_pedagogico", nodo_redactor_pedagogico)
+    builder.add_node("redactor_pedagogico", redactor)
     builder.add_node("critico_revisor", nodo_critico_revisor)
     builder.add_node("guardado_final", nodo_guardado_final)
     builder.add_node("confirmar_modificacion", nodo_confirmar_modificacion)
@@ -344,7 +366,10 @@ async def construir_grafo(generador: GeneradorEstructurado):
         "investigador", enrutar_tras_investigador,
         {"match": "redactor_pedagogico", "aclaracion": END},
     )
-    builder.add_edge("redactor_pedagogico", "critico_revisor")
+    builder.add_conditional_edges(
+        "redactor_pedagogico", enrutar_tras_redactor,
+        {"critico_revisor": "critico_revisor", "error": END},
+    )
     builder.add_conditional_edges(
         "critico_revisor", enrutar_tras_revisor,
         {
