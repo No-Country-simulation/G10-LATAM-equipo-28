@@ -1,10 +1,12 @@
 # Carril de orquestación — agentes, grafo y HITL
 
-Mapa de integración del carril de **orquestación** (Supervisor, Investigador, grafo
-LangGraph y pausas HITL). Base `dev 54c1ab3`; se completa con el PR #9
-(`feature/marely-orquestacion`). Este documento describe el estado real en `dev`
-y las decisiones tomadas al integrar, para que Franklin (integración) y el
-Investigador/Verificador reales se conecten sin adivinar.
+Mapa de integración del carril de **orquestación** (Supervisor, Investigador,
+Crítico/Revisor, Modificador, grafo LangGraph y pausas HITL). Base `dev 54c1ab3`;
+se completó con el PR #9 (`feature/marely-orquestacion`) y la rama
+`feature/marely-critico-modificador` (crítico/revisor y modificador reales). Este
+documento describe el estado real en `dev` y las decisiones tomadas al integrar,
+para que Franklin (integración) y el Investigador/Verificador reales se conecten
+sin adivinar.
 
 ## Alcance y estado
 
@@ -21,9 +23,10 @@ Investigador/Verificador reales se conecten sin adivinar.
 **Todavía NO:**
 
 - `rag/` (Chroma) — carril de Oscar. Sin esto no hay `recuperador` real.
-- Verificador / `anclaje_fuente_score` — ver "Pendientes".
+- Integración de `anclaje_fuente_score` (`src/fidelidad/`, carril de Oscar). El
+  Crítico/Revisor ya expone el puerto `CalculadorFidelidad` para enchufarlo.
 - `app.py` (composition root + Streamlit).
-- Crítico/Revisor, Modificador y Validación reales (siguen stub).
+- Validación real (`seguridad/validadores.py`); sigue stub.
 
 ## Patrón de agente (Decisión A3)
 
@@ -41,6 +44,8 @@ Protocolos compartidos (`src/agentes/protocolos.py`): `GeneradorEstructurado`
 | Supervisor | `agente_supervisor.clasificar_intencion` | `supervisor.construir_nodo_supervisor(generador)` | `generador` | `tema_consulta`, `perfil_destinatario`, `formato_salida`, `nicho_sector`, `nivel_detalle` |
 | Investigador | `agente_investigador.investigar` | `investigador.construir_nodo_investigador(recuperador, generador)` | `recuperador`, `generador` | `fuente_confirmada`, `chunks_fuente_confirmados`, `chunks_fuente_estructurados`, `mensaje_aclaracion` |
 | Redactor (Sergio) | `agente_redactor_pedagogico.redactar_pedagogicamente` | `redactor.construir_nodo_redactor(generador, preparar_pedagogia, obtener_solicitud)` | `generador`, `preparar_pedagogia`, `obtener_solicitud` | `contenido_adaptado`, `metadatos`, `intentos_redactor`, `evaluacion_calidad`, `aprobado`, `error` |
+| Crítico/Revisor | `agente_critico_revisor.revisar_contenido` | `critico_revisor.construir_nodo_critico_revisor(generador, calculador_fidelidad=None)` | `generador`, `calculador_fidelidad` (opcional) | `aprobado`, `evaluacion_calidad` |
+| Modificador | `agente_modificador.modificar_contenido` | `modificador.construir_nodo_modificador(generador, preparar_pedagogia, obtener_solicitud)` | `generador`, `preparar_pedagogia`, `obtener_solicitud` | `contenido_adaptado`, `vueltas_modificacion`, `aprobado`, `evaluacion_calidad`, `error` |
 
 Detalles que importan:
 
@@ -69,10 +74,11 @@ critico_revisor -> guardado_final -> confirmar_modificacion (HITL)
 ```
 
 - **Nodos reales**: `buscador_documentos`, `ingesta` (descarga vía MCP), `supervisor`,
-  `redactor_pedagogico` (Sergio), `guardado_final`, y los HITL.
+  `redactor_pedagogico` (Sergio), `critico_revisor`, `modificador`, `guardado_final`,
+  y los HITL.
 - **Nodos reales condicionados**: `investigador` usa el adaptador real **solo si
   se inyecta un `recuperador`**; si no, mantiene el stub (ver abajo).
-- **Stubs**: `validacion`, `critico_revisor`, `modificador`.
+- **Stubs**: `validacion`.
 
 ### Composición (`construir_grafo`)
 
@@ -83,6 +89,8 @@ async def construir_grafo(
     preparar_pedagogia=None,
     get_llm_factory=None,
     construir_supervisor=None,
+    construir_critico_revisor=None,
+    construir_modificador=None,
     recuperador=None,
 ):
 ```
@@ -96,6 +104,10 @@ async def construir_grafo(
   default del grafo envuelve correctamente:
   `construir_nodo_supervisor(GeneradorLLMClient(get_llm_factory, rate_limiter))`.
   (Corrige el default original de la integración, que pasaba el limiter directo.)
+- `construir_critico_revisor` y `construir_modificador`: factories
+  `factory(rate_limiter) -> nodo`, mismo patrón que el Supervisor. Los defaults usan
+  los núcleos reales (`critico_revisor.py`, `modificador.py`); los tests inyectan
+  dobles para fijar aprobación/rechazo sin gastar cuota.
 - `recuperador`: vector store (`rag/vectorstore.py`). **Si se pasa**, el nodo
   Investigador real reemplaza al stub; si no, se conserva el stub. Hoy `rag/` no
   está en `dev`, así que el default es el stub.
@@ -141,10 +153,11 @@ sobre el valor existente, nunca se resetean**. El Redactor solo incrementa
 
 ## Comprobaciones
 
-- `python -m pytest tests/ -q` → **186 pruebas** en verde (incluye
+- `python -m pytest tests/ -q` → **224 pruebas** en verde (incluye
   `test_agente_supervisor`, `test_nodo_supervisor`, `test_agente_investigador`,
-  `test_nodo_investigador`, `test_nodo_aclaracion`, `test_grafo_smoke`,
-  `test_integracion_redactor_grafo`).
+  `test_nodo_investigador`, `test_nodo_aclaracion`, `test_agente_critico_revisor`,
+  `test_nodo_critico_revisor`, `test_agente_modificador`, `test_nodo_modificador`,
+  `test_grafo_smoke`, `test_integracion_redactor_grafo`).
 - Notebooks: `notebooks/01_supervisor_intencion.ipynb` y
   `notebooks/02_investigador_cobertura.ipynb` (con generador/recuperador
   inyectados; opcionales con LLM real si hay `LLM_PROVIDER`).
@@ -159,8 +172,10 @@ sobre el valor existente, nunca se resetean**. El Redactor solo incrementa
   `construir_grafo(..., recuperador=...)` enciende el Investigador real.
 - **Verificador / `anclaje_fuente_score` (coordinar con Oscar,
   `feature/oscar-calidad`)**: `feature/oscar-calidad` ya trae "cascada de coseno +
-  juez LLM". Definir quién cierra el nodo Crítico/Revisor real para no duplicar.
-- **Crítico/Revisor, Modificador, Validación**: stubs; definir owners.
+  juez LLM". El Crítico/Revisor ya está implementado y expone el puerto
+  `CalculadorFidelidad`; falta decidir el owner e inyectar el calculador, para no
+  duplicar lógica.
+- **Validación**: sigue stub (`seguridad/validadores.py`); definir owner.
 - **`app.py`**: composition root (Streamlit + wiring de `construir_grafo`).
 - **README**: su tabla "Estado" y su sección "Estructura" quedaron desactualizadas
   frente al código real (`src/grafo.py` + `src/agentes/`, no `src/orquestacion/`).
