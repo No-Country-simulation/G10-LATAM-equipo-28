@@ -14,11 +14,13 @@ Nodos REALES (llaman a OCI vía Cliente_agemte.py, ya validado):
 Nodos con LLM real:
   - supervisor (agentes/supervisor.py, IntencionOut vía Groq)
   - redactor_pedagogico (core real con dependencias inyectadas)
+  - critico_revisor (agentes/critico_revisor.py, formato + fidelidad cualitativa)
+  - modificador (agentes/modificador.py, cambio puntual sobre lo aprobado)
   - investigador (agentes/investigador.py) -- real solo si se inyecta un
     recuperador; por defecto sigue el stub porque rag/ (Chroma) no está en dev
 
-Nodos STUB (marcados # TODO, esperando sus archivos en agentes/):
-  - critico_revisor, modificador
+Nodos STUB (marcados # TODO, esperando sus archivos):
+  - validacion (seguridad/validadores.py pendiente)
 
 HITL de aclaración (1 ronda): la rama "aclaracion" de enrutar_tras_investigador
 entra a nodo_aclaracion, que pausa el grafo y expone el mensaje_aclaracion real
@@ -48,6 +50,8 @@ from langgraph.types import interrupt
 
 from src.agent_state import AgentState
 from src.agentes.generador_llm_client import GeneradorLLMClient
+from src.agentes.critico_revisor import construir_nodo_critico_revisor
+from src.agentes.modificador import construir_nodo_modificador
 from src.agentes.redactor import (
     construir_nodo_redactor, enrutar_tras_redactor, obtener_solicitud_redactor,
 )
@@ -214,23 +218,16 @@ def nodo_aclaracion(state: AgentState) -> dict:
 
 
 # --------------------------------------------------------------------------
-# Crítico/Revisor (STUB, reusado para Redactor y Modificador)
+# Crítico/Revisor: enrutamiento tras la revisión
 # --------------------------------------------------------------------------
-
-def nodo_critico_revisor(state: AgentState) -> dict:
-    # TODO: revisión real vía LLM (formato + fidelidad, sección 10).
-    # Stub siempre aprueba para que el skeleton fluya de punta a punta.
-    return {
-        "aprobado": True,
-        "evaluacion_calidad": {"claridad_pedagogica": "Alta", "observaciones": "[STUB]"},
-    }
-
 
 def enrutar_tras_revisor(state: AgentState) -> str:
     if state.get("aprobado"):
         return "guardado_final"
     if state.get("intentos_redactor", 0) >= MAX_REINTENTOS_REDACTOR:
         return "guardado_final"  # agota reintentos -> exito_con_advertencias
+    if state.get("vueltas_modificacion", 0) >= MAX_VUELTAS_MODIFICACION:
+        return "guardado_final"  # tope de modificaciones -> evita loop indefinido
     if state.get("vueltas_modificacion", 0) > 0:
         return "modificador"
     return "redactor_pedagogico"
@@ -292,23 +289,6 @@ def enrutar_tras_confirmar_modificacion(state: AgentState) -> str:
 
 
 # --------------------------------------------------------------------------
-# Modificador (STUB)
-# --------------------------------------------------------------------------
-
-def nodo_modificador(state: AgentState) -> dict:
-    # TODO: aplica el cambio real vía LLM sobre contenido_adaptado,
-    # mismo schema y reglas de fidelidad que el Redactor (sección 12).
-    vueltas = state.get("vueltas_modificacion", 0) + 1
-    return {
-        "contenido_adaptado": {
-            **state.get("contenido_adaptado", {}),
-            "titulo": f"[STUB modificado v{vueltas}]",
-        },
-        "vueltas_modificacion": vueltas,
-    }
-
-
-# --------------------------------------------------------------------------
 # Construcción del grafo
 # --------------------------------------------------------------------------
 
@@ -318,6 +298,8 @@ async def construir_grafo(
     preparar_pedagogia=None,
     get_llm_factory=None,
     construir_supervisor=None,
+    construir_critico_revisor=None,
+    construir_modificador=None,
     recuperador=None,
 ):
     """
@@ -333,6 +315,12 @@ async def construir_grafo(
     construir_supervisor: factory(rate_limiter) -> nodo; conserva el patrón
     de dependencias inyectadas del carril de orquestación (Decisión A3: el
     grafo NO elige proveedor; se construye una vez en `app.py` y se inyecta).
+    construir_critico_revisor: factory(rate_limiter) -> nodo del Revisor. El
+    default usa el núcleo real; los tests inyectan un doble para fijar la
+    aprobación/rechazo sin gastar cuota.
+    construir_modificador: factory(rate_limiter) -> nodo del Modificador (mismo
+    patrón). El default usa el núcleo real con la pedagogía y el validador de
+    solicitud del Redactor.
     recuperador: vector store (rag/vectorstore.py). Si se pasa, el nodo
     Investigador real reemplaza al stub; si no, se mantiene el stub porque
     rag/ (Chroma) todavía no está en dev.
@@ -351,6 +339,18 @@ async def construir_grafo(
         def construir_supervisor(rate_limiter):
             return construir_nodo_supervisor(
                 GeneradorLLMClient(get_llm_factory, rate_limiter)
+            )
+    if construir_critico_revisor is None:
+        def construir_critico_revisor(rate_limiter):
+            return construir_nodo_critico_revisor(
+                GeneradorLLMClient(get_llm_factory, rate_limiter)
+            )
+    if construir_modificador is None:
+        def construir_modificador(rate_limiter):
+            return construir_nodo_modificador(
+                GeneradorLLMClient(get_llm_factory, rate_limiter),
+                preparar_pedagogia,
+                obtener_solicitud_redactor,
             )
 
     redactor = construir_nodo_redactor(
@@ -377,10 +377,10 @@ async def construir_grafo(
     builder.add_node("investigador", nodo_investigador_activo)
     builder.add_node("aclaracion", nodo_aclaracion)
     builder.add_node("redactor_pedagogico", redactor)
-    builder.add_node("critico_revisor", nodo_critico_revisor)
+    builder.add_node("critico_revisor", construir_critico_revisor(rate_limiter))
     builder.add_node("guardado_final", nodo_guardado_final)
     builder.add_node("confirmar_modificacion", nodo_confirmar_modificacion)
-    builder.add_node("modificador", nodo_modificador)
+    builder.add_node("modificador", construir_modificador(rate_limiter))
 
     builder.set_entry_point("buscador_documentos")
 

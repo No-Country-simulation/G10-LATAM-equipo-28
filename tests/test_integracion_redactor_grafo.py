@@ -146,16 +146,23 @@ def _ejecutar_grafo(monkeypatch, *, salida=None, formato="Flashcards", stub=Fals
     monkeypatch.setattr(grafo.aiosqlite, "connect", sqlite_memoria)
     if not stub:
         monkeypatch.setattr(grafo, "nodo_investigador", investigador)
-    if rechazo:
-        monkeypatch.setattr(grafo, "nodo_critico_revisor", lambda _: {
-            "aprobado": False, "evaluacion_calidad": {"observaciones": "Revisar explicación"},
-        })
+
+    def construir_critico_revisor(_limiter):
+        # Doble del Revisor: no gasta cuota y fija aprobación/rechazo desde el test.
+        async def critico(_state):
+            if rechazo:
+                return {"aprobado": False, "evaluacion_calidad": {
+                    "claridad_pedagogica": "Media", "observaciones": "Revisar explicación"}}
+            return {"aprobado": True, "evaluacion_calidad": {
+                "claridad_pedagogica": "Alta", "observaciones": "Ok"}}
+        return critico
 
     async def escenario():
         try:
             pipeline = await grafo.construir_grafo(
                 limiter, preparar_pedagogia=preparar, get_llm_factory=factory,
                 construir_supervisor=supervisor_factory,
+                construir_critico_revisor=construir_critico_revisor,
             )
             config = {"configurable": {"thread_id": "pr7-integracion"}}
             inicio = await pipeline.ainvoke({
