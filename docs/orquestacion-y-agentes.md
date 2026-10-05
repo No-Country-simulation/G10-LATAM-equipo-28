@@ -2,11 +2,11 @@
 
 Mapa de integración del carril de **orquestación** (Supervisor, Investigador,
 Crítico/Revisor, Modificador, grafo LangGraph y pausas HITL). Base `dev 54c1ab3`;
-se completó con el PR #9 (`feature/marely-orquestacion`) y la rama
-`feature/marely-critico-modificador` (crítico/revisor y modificador reales). Este
-documento describe el estado real en `dev` y las decisiones tomadas al integrar,
-para que Franklin (integración) y el Investigador/Verificador reales se conecten
-sin adivinar.
+se completó con el PR #9 (`feature/marely-orquestacion`) y el PR #10
+(`feature/marely-critico-modificador`, crítico/revisor y modificador reales).
+`dev` = `163bcb1`. Este documento describe el estado real en `dev` y las decisiones
+tomadas al integrar, para que Franklin (integración) y el Investigador/Verificador
+reales se conecten sin adivinar.
 
 ## Alcance y estado
 
@@ -15,10 +15,11 @@ sin adivinar.
 - Contrato congelado (`src/contracts/`), `config`, `llm_provider`, `errores`.
 - Acceso a OCI por MCP: `servidor_objeStorageOracle.py` + `Cliente_agemte.py`.
 - `agent_state.py` (`AgentState` como `TypedDict`) y `grafo.py`.
-- Agentes del carril: **Supervisor** (núcleo + nodo) e **Investigador** (núcleo +
-  nodo). El **Redactor** (Sergio) ya está conectado como nodo.
+- Agentes del carril: **Supervisor** (núcleo + nodo), **Investigador** (núcleo +
+  nodo), **Crítico/Revisor** y **Modificador**. El **Redactor** (Sergio) ya está
+  conectado como nodo.
 - `pedagogia/`, `seguridad/` (rate limiter, `llm_client` de Franklin), `prompts/`.
-- 186 pruebas en verde.
+- 224 pruebas en verde.
 
 **Todavía NO:**
 
