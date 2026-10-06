@@ -1,0 +1,8 @@
+﻿ARQUITECTURA DE BASES DE DATOS RELACIONALES Y GESTION DE TRANSACCIONES
+Las bases de datos relacionales organizan la informacion en tablas compuestas por filas y columnas.
+El principio fundamental que garantiza la confiabilidad operativa es el modelo ACID:
+1. Atomicidad: Todas las operaciones de una transaccion se completan con exito o ninguna se aplica.
+2. Consistencia: Una transaccion solo lleva la base de datos de un estado valido a otro.
+3. Aislamiento: La ejecucion concurrente de transacciones produce el mismo resultado que una ejecucion secuencial.
+4. Durabilidad: Una vez confirmada la transaccion, sus efectos persisten incluso ante fallas de energia.
+El pool de conexiones optimiza la latencia reutilizando sesiones activas entre la aplicacion y el motor.
