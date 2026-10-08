@@ -3,8 +3,9 @@ grafo.py
 
 Grafo de NuevaMente (5to spec). Flujo secuencial, no fan-out:
 
-buscador_documentos -> confirmar_ejecucion (HITL) -> ingesta -> validacion
--> supervisor -> investigador -> redactor_pedagogico -> critico_revisor
+validacion_entrada_inicial -> buscador_documentos -> confirmar_ejecucion (HITL)
+-> ingesta -> validacion -> supervisor -> validacion_solicitud -> investigador
+-> redactor_pedagogico -> critico_revisor
 -> guardado_final -> confirmar_modificacion (HITL) -> [modificador -> critico_revisor
    -> guardado_final -> confirmar_modificacion]* -> END
 
@@ -19,8 +20,10 @@ Nodos con LLM real:
   - investigador (agentes/investigador.py) -- real solo si se inyecta un
     recuperador; por defecto sigue el stub porque rag/ (Chroma) no está en dev
 
-Nodos STUB (marcados # TODO, esperando sus archivos):
-  - validacion (seguridad/validadores.py pendiente)
+Nodos de validación determinística:
+  - validacion_entrada_inicial antes de cualquier llamada a MCP
+  - validacion después de la ingesta y antes del Supervisor
+  - validacion_solicitud antes del Investigador
 
 HITL de aclaración (1 ronda): la rama "aclaracion" de enrutar_tras_investigador
 entra a nodo_aclaracion, que pausa el grafo y expone el mensaje_aclaracion real
@@ -49,6 +52,7 @@ from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
 from src.agent_state import AgentState
+from src.errores import ErrorLLM, ErrorSalidaInvalida
 from src.agentes.generador_llm_client import GeneradorLLMClient
 from src.agentes.critico_revisor import construir_nodo_critico_revisor
 from src.agentes.modificador import construir_nodo_modificador
@@ -57,6 +61,17 @@ from src.agentes.redactor import (
 )
 from src.Cliente_agemte import conectar_mcp, con_reintento_mcp, extraer_texto_resultado, extraer_lista_resultado, obtener_tools_langchain
 from src.seguridad.rate_limiter import RateLimiter
+from src.seguridad.permisos import obtener_herramienta_autorizada
+from src.seguridad.validadores import (
+    ErrorValidacionEntrada,
+    mensajes_con_entrada_sanitizada,
+    validar_entrada_usuario,
+    validar_entrada_pre_llm,
+    validar_instruccion_modificacion,
+    validar_objeto_fuente,
+    validar_solicitud_adaptacion,
+    validar_tema_consulta,
+)
 
 PREFIJO_FUENTES = "fuentes/"
 MAX_REINTENTOS_REDACTOR = 2
@@ -89,8 +104,11 @@ async def nodo_buscador_documentos(state: AgentState) -> dict:
 
     async def _listar():
         async with conectar_mcp() as sesion:
-            tools = {t.name: t for t in await obtener_tools_langchain(sesion)}
-            resultado = await tools["listar_documentos_fuente"].ainvoke({})
+            tools = await obtener_tools_langchain(sesion)
+            herramienta = obtener_herramienta_autorizada(
+                tools, etapa="buscador_documentos", nombre="listar_documentos_fuente"
+            )
+            resultado = await herramienta.ainvoke({})
             return extraer_lista_resultado(resultado)
 
     documentos = await con_reintento_mcp(_listar)
@@ -124,12 +142,25 @@ def nodo_confirmar_ejecucion(state: AgentState) -> dict:
         "objeto_id_confirmado": state.get("objeto_id_confirmado"),
     })
 
+    if not isinstance(respuesta, dict) or not isinstance(respuesta.get("confirmado"), bool):
+        return {
+            "ejecucion_confirmada": False,
+            "status": "error",
+            "error": "La confirmación recibida no tiene un formato válido.",
+        }
+
     objeto_id = respuesta.get("objeto_id_confirmado") or state.get("objeto_id_confirmado")
+    if objeto_id is not None and not isinstance(objeto_id, str):
+        return {
+            "ejecucion_confirmada": False,
+            "status": "error",
+            "error": "El documento seleccionado no tiene un formato válido.",
+        }
     if objeto_id and not objeto_id.startswith(PREFIJO_FUENTES):
         objeto_id = f"{PREFIJO_FUENTES}{objeto_id}"
 
     return {
-        "ejecucion_confirmada": bool(respuesta.get("confirmado", False)),
+        "ejecucion_confirmada": respuesta["confirmado"],
         "objeto_id_confirmado": objeto_id,
     }
 
@@ -143,12 +174,22 @@ def enrutar_tras_confirmar_ejecucion(state: AgentState) -> str:
 # --------------------------------------------------------------------------
 
 async def nodo_ingesta(state: AgentState) -> dict:
-    objeto_id = state["objeto_id_confirmado"]
+    try:
+        objeto_id = validar_objeto_fuente(state.get("objeto_id_confirmado"))
+    except ErrorValidacionEntrada as exc:
+        return {
+            "validacion_entrada_ok": False,
+            "status": "error",
+            "error": exc.mensaje,
+        }
 
     async def _descargar():
         async with conectar_mcp() as sesion:
-            tools = {t.name: t for t in await obtener_tools_langchain(sesion)}
-            resultado = await tools["descargar_documento"].ainvoke({"objeto_id": objeto_id})
+            tools = await obtener_tools_langchain(sesion)
+            herramienta = obtener_herramienta_autorizada(
+                tools, etapa="ingesta", nombre="descargar_documento"
+            )
+            resultado = await herramienta.ainvoke({"objeto_id": objeto_id})
             texto = extraer_texto_resultado(resultado)
             return json.loads(texto)
 
@@ -168,17 +209,114 @@ async def nodo_ingesta(state: AgentState) -> dict:
 
 
 # --------------------------------------------------------------------------
-# Validación (STUB -- seguridad/validadores.py pendiente)
+# Validación de entrada antes de llamar a cualquier agente LLM.
 # --------------------------------------------------------------------------
 
+def _estado_error_validacion(mensaje: str) -> dict:
+    """Corta una ejecución inválida y descarta cualquier salida anterior reutilizable."""
+    return {
+        "validacion_entrada_ok": False,
+        "status": "error",
+        "error": mensaje,
+        "contenido_adaptado": None,
+        "metadatos": None,
+        "evaluacion_calidad": None,
+        "aprobado": False,
+        "almacenamiento_oci": None,
+    }
+
+
+def nodo_validacion_entrada_inicial(state: AgentState) -> dict:
+    """Rechaza solicitudes inválidas antes de listar o descargar documentos."""
+    try:
+        entrada = validar_entrada_usuario(state)
+    except ErrorValidacionEntrada as exc:
+        return _estado_error_validacion(exc.mensaje)
+    return {
+        "tema_pedido_chat": entrada.tema_pedido_chat,
+        "input_sanitizado": entrada.mensaje_usuario,
+        "validacion_entrada_ok": True,
+        "error": None,
+    }
+
+
+def enrutar_tras_validacion_entrada_inicial(state: AgentState) -> str:
+    return "ok" if state.get("validacion_entrada_ok") is True else "rechazado"
+
+
 def nodo_validacion(state: AgentState) -> dict:
-    # TODO: sanitización + heurística de prompt injection real
-    # (seguridad/validadores.py pendiente de escribir para este proyecto).
-    return {"input_sanitizado": True}
+    try:
+        entrada = validar_entrada_pre_llm(state)
+    except ErrorValidacionEntrada as exc:
+        return _estado_error_validacion(exc.mensaje)
+    return {
+        "tema_pedido_chat": entrada.tema_pedido_chat,
+        "input_sanitizado": entrada.mensaje_usuario,
+        "validacion_entrada_ok": True,
+        "error": None,
+    }
 
 
 def enrutar_tras_validacion(state: AgentState) -> str:
-    return "ok"  # TODO: "rechazado" cuando validadores.py esté escrito
+    return "ok" if state.get("validacion_entrada_ok") is True else "rechazado"
+
+
+def nodo_validacion_solicitud(state: AgentState) -> dict:
+    """Comprueba la salida del Supervisor contra el contrato antes del Investigador."""
+    if state.get("validacion_entrada_ok") is False:
+        return _estado_error_validacion(
+            state.get("error") or "No se pudo validar la clasificación de la solicitud."
+        )
+    try:
+        solicitud = validar_solicitud_adaptacion(state)
+        tema = validar_tema_consulta(state.get("tema_consulta"))
+    except ErrorValidacionEntrada as exc:
+        return _estado_error_validacion(exc.mensaje)
+    return {
+        "tema_consulta": tema,
+        "perfil_destinatario": solicitud.perfil_destinatario.value,
+        "formato_salida": solicitud.formato_salida.value,
+        "nicho_sector": solicitud.nicho_sector.value,
+        "nivel_detalle": solicitud.nivel_detalle.value,
+        "validacion_entrada_ok": True,
+        "error": None,
+    }
+
+
+def enrutar_tras_validacion_solicitud(state: AgentState) -> str:
+    return "ok" if state.get("validacion_entrada_ok") is True else "rechazado"
+
+
+def nodo_validacion_modificacion(state: AgentState) -> dict:
+    """Valida el cambio pedido antes de delegarlo al Modificador."""
+    if state.get("validacion_entrada_ok") is False:
+        return {
+            "validacion_entrada_ok": False,
+            "status": "error",
+            "error": state.get("error") or "La confirmación de modificación no es válida.",
+        }
+    instruccion = state.get("instruccion_modificacion")
+    if instruccion is None:
+        return {"validacion_entrada_ok": True, "error": None}
+    try:
+        normalizada = validar_instruccion_modificacion(instruccion)
+    except ErrorValidacionEntrada as exc:
+        return {
+            "validacion_entrada_ok": False,
+            "status": "error",
+            "error": exc.mensaje,
+        }
+    return {
+        "instruccion_modificacion": normalizada,
+        "validacion_entrada_ok": True,
+        "error": None,
+    }
+
+
+def enrutar_tras_validacion_modificacion(state: AgentState) -> str:
+    if state.get("validacion_entrada_ok") is not True:
+        return "rechazado"
+    return "modificar" if state.get("instruccion_modificacion") else "fin"
 
 
 # --------------------------------------------------------------------------
@@ -248,8 +386,11 @@ async def nodo_guardado_final(state: AgentState) -> dict:
 
     async def _guardar():
         async with conectar_mcp() as sesion:
-            tools = {t.name: t for t in await obtener_tools_langchain(sesion)}
-            resultado = await tools["guardar_resultado_formateado"].ainvoke({
+            tools = await obtener_tools_langchain(sesion)
+            herramienta = obtener_herramienta_autorizada(
+                tools, etapa="guardado_final", nombre="guardar_resultado_formateado"
+            )
+            resultado = await herramienta.ainvoke({
                 "nombre_archivo": nombre_archivo,
                 "contenido": contenido,
             })
@@ -279,13 +420,15 @@ def nodo_confirmar_modificacion(state: AgentState) -> dict:
         "tipo": "confirmar_modificacion",
         "vueltas_modificacion": state.get("vueltas_modificacion", 0),
     })
+    if not isinstance(respuesta, dict):
+        return {
+            "validacion_entrada_ok": False,
+            "status": "error",
+            "error": "La instrucción de modificación no tiene un formato válido.",
+        }
     return {
         "instruccion_modificacion": respuesta.get("instruccion"),
     }
-
-
-def enrutar_tras_confirmar_modificacion(state: AgentState) -> str:
-    return "modificar" if state.get("instruccion_modificacion") else "fin"
 
 
 # --------------------------------------------------------------------------
@@ -369,20 +512,41 @@ async def construir_grafo(
 
     builder = StateGraph(AgentState)
 
+    builder.add_node("validacion_entrada_inicial", nodo_validacion_entrada_inicial)
     builder.add_node("buscador_documentos", nodo_buscador_documentos)
     builder.add_node("confirmar_ejecucion", nodo_confirmar_ejecucion)
     builder.add_node("ingesta", nodo_ingesta)
     builder.add_node("validacion", nodo_validacion)
-    builder.add_node("supervisor", construir_supervisor(rate_limiter))
+    supervisor = construir_supervisor(rate_limiter)
+
+    async def supervisor_con_entrada_sanitizada(state: AgentState) -> dict:
+        estado_seguro = dict(state)
+        estado_seguro["mensajes"] = mensajes_con_entrada_sanitizada(
+            state.get("mensajes", []), state.get("input_sanitizado")
+        )
+        try:
+            return await supervisor(estado_seguro)
+        except (ErrorLLM, ErrorSalidaInvalida):
+            return _estado_error_validacion(
+                "No se pudo clasificar la solicitud de forma válida. Intenta reformularla."
+            )
+
+    builder.add_node("supervisor", supervisor_con_entrada_sanitizada)
+    builder.add_node("validacion_solicitud", nodo_validacion_solicitud)
     builder.add_node("investigador", nodo_investigador_activo)
     builder.add_node("aclaracion", nodo_aclaracion)
     builder.add_node("redactor_pedagogico", redactor)
     builder.add_node("critico_revisor", construir_critico_revisor(rate_limiter))
     builder.add_node("guardado_final", nodo_guardado_final)
     builder.add_node("confirmar_modificacion", nodo_confirmar_modificacion)
+    builder.add_node("validacion_modificacion", nodo_validacion_modificacion)
     builder.add_node("modificador", construir_modificador(rate_limiter))
 
-    builder.set_entry_point("buscador_documentos")
+    builder.set_entry_point("validacion_entrada_inicial")
+    builder.add_conditional_edges(
+        "validacion_entrada_inicial", enrutar_tras_validacion_entrada_inicial,
+        {"rechazado": END, "ok": "buscador_documentos"},
+    )
 
     builder.add_edge("buscador_documentos", "confirmar_ejecucion")
     builder.add_conditional_edges(
@@ -393,7 +557,11 @@ async def construir_grafo(
     builder.add_conditional_edges(
         "validacion", enrutar_tras_validacion, {"rechazado": END, "ok": "supervisor"},
     )
-    builder.add_edge("supervisor", "investigador")
+    builder.add_edge("supervisor", "validacion_solicitud")
+    builder.add_conditional_edges(
+        "validacion_solicitud", enrutar_tras_validacion_solicitud,
+        {"rechazado": END, "ok": "investigador"},
+    )
     builder.add_conditional_edges(
         "investigador", enrutar_tras_investigador,
         {"match": "redactor_pedagogico", "aclaracion": "aclaracion"},
@@ -416,9 +584,10 @@ async def construir_grafo(
         "guardado_final", enrutar_tras_guardado,
         {"preguntar": "confirmar_modificacion", "tope_alcanzado": END},
     )
+    builder.add_edge("confirmar_modificacion", "validacion_modificacion")
     builder.add_conditional_edges(
-        "confirmar_modificacion", enrutar_tras_confirmar_modificacion,
-        {"modificar": "modificador", "fin": END},
+        "validacion_modificacion", enrutar_tras_validacion_modificacion,
+        {"modificar": "modificador", "fin": END, "rechazado": END},
     )
 
     conexion = await aiosqlite.connect("checkpoints.sqlite")
