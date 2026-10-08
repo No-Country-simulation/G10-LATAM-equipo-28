@@ -3,8 +3,9 @@ grafo.py
 
 Grafo de NuevaMente (5to spec). Flujo secuencial, no fan-out:
 
-buscador_documentos -> confirmar_ejecucion (HITL) -> ingesta -> validacion
--> supervisor -> investigador -> redactor_pedagogico -> critico_revisor
+validacion_entrada_inicial -> buscador_documentos -> confirmar_ejecucion (HITL)
+-> ingesta -> validacion -> supervisor -> validacion_solicitud -> investigador
+-> redactor_pedagogico -> critico_revisor
 -> guardado_final -> confirmar_modificacion (HITL) -> [modificador -> critico_revisor
    -> guardado_final -> confirmar_modificacion]* -> END
 
@@ -19,8 +20,10 @@ Nodos con LLM real:
   - investigador (agentes/investigador.py) -- real solo si se inyecta un
     recuperador; por defecto sigue el stub porque rag/ (Chroma) no está en dev
 
-Nodos STUB (marcados # TODO, esperando sus archivos):
-  - validacion (seguridad/validadores.py pendiente)
+Nodos de validación determinística:
+  - validacion_entrada_inicial antes de cualquier llamada a MCP
+  - validacion después de la ingesta y antes del Supervisor
+  - validacion_solicitud antes del Investigador
 
 HITL de aclaración (1 ronda): la rama "aclaracion" de enrutar_tras_investigador
 entra a nodo_aclaracion, que pausa el grafo y expone el mensaje_aclaracion real
@@ -61,6 +64,7 @@ from src.seguridad.permisos import obtener_herramienta_autorizada
 from src.seguridad.validadores import (
     ErrorValidacionEntrada,
     mensajes_con_entrada_sanitizada,
+    validar_entrada_usuario,
     validar_entrada_pre_llm,
     validar_instruccion_modificacion,
     validar_objeto_fuente,
@@ -137,12 +141,25 @@ def nodo_confirmar_ejecucion(state: AgentState) -> dict:
         "objeto_id_confirmado": state.get("objeto_id_confirmado"),
     })
 
+    if not isinstance(respuesta, dict) or not isinstance(respuesta.get("confirmado"), bool):
+        return {
+            "ejecucion_confirmada": False,
+            "status": "error",
+            "error": "La confirmación recibida no tiene un formato válido.",
+        }
+
     objeto_id = respuesta.get("objeto_id_confirmado") or state.get("objeto_id_confirmado")
+    if objeto_id is not None and not isinstance(objeto_id, str):
+        return {
+            "ejecucion_confirmada": False,
+            "status": "error",
+            "error": "El documento seleccionado no tiene un formato válido.",
+        }
     if objeto_id and not objeto_id.startswith(PREFIJO_FUENTES):
         objeto_id = f"{PREFIJO_FUENTES}{objeto_id}"
 
     return {
-        "ejecucion_confirmada": bool(respuesta.get("confirmado", False)),
+        "ejecucion_confirmada": respuesta["confirmado"],
         "objeto_id_confirmado": objeto_id,
     }
 
@@ -207,6 +224,25 @@ def _estado_error_validacion(mensaje: str) -> dict:
         "almacenamiento_oci": None,
     }
 
+
+def nodo_validacion_entrada_inicial(state: AgentState) -> dict:
+    """Rechaza solicitudes inválidas antes de listar o descargar documentos."""
+    try:
+        entrada = validar_entrada_usuario(state)
+    except ErrorValidacionEntrada as exc:
+        return _estado_error_validacion(exc.mensaje)
+    return {
+        "tema_pedido_chat": entrada.tema_pedido_chat,
+        "input_sanitizado": entrada.mensaje_usuario,
+        "validacion_entrada_ok": True,
+        "error": None,
+    }
+
+
+def enrutar_tras_validacion_entrada_inicial(state: AgentState) -> str:
+    return "ok" if state.get("validacion_entrada_ok") is True else "rechazado"
+
+
 def nodo_validacion(state: AgentState) -> dict:
     try:
         entrada = validar_entrada_pre_llm(state)
@@ -240,8 +276,14 @@ def enrutar_tras_validacion_solicitud(state: AgentState) -> str:
 
 def nodo_validacion_modificacion(state: AgentState) -> dict:
     """Valida el cambio pedido antes de delegarlo al Modificador."""
+    if state.get("validacion_entrada_ok") is False:
+        return {
+            "validacion_entrada_ok": False,
+            "status": "error",
+            "error": state.get("error") or "La confirmación de modificación no es válida.",
+        }
     instruccion = state.get("instruccion_modificacion")
-    if not instruccion:
+    if instruccion is None:
         return {"validacion_entrada_ok": True, "error": None}
     try:
         normalizada = validar_instruccion_modificacion(instruccion)
@@ -365,6 +407,12 @@ def nodo_confirmar_modificacion(state: AgentState) -> dict:
         "tipo": "confirmar_modificacion",
         "vueltas_modificacion": state.get("vueltas_modificacion", 0),
     })
+    if not isinstance(respuesta, dict):
+        return {
+            "validacion_entrada_ok": False,
+            "status": "error",
+            "error": "La instrucción de modificación no tiene un formato válido.",
+        }
     return {
         "instruccion_modificacion": respuesta.get("instruccion"),
     }
@@ -451,6 +499,7 @@ async def construir_grafo(
 
     builder = StateGraph(AgentState)
 
+    builder.add_node("validacion_entrada_inicial", nodo_validacion_entrada_inicial)
     builder.add_node("buscador_documentos", nodo_buscador_documentos)
     builder.add_node("confirmar_ejecucion", nodo_confirmar_ejecucion)
     builder.add_node("ingesta", nodo_ingesta)
@@ -475,7 +524,11 @@ async def construir_grafo(
     builder.add_node("validacion_modificacion", nodo_validacion_modificacion)
     builder.add_node("modificador", construir_modificador(rate_limiter))
 
-    builder.set_entry_point("buscador_documentos")
+    builder.set_entry_point("validacion_entrada_inicial")
+    builder.add_conditional_edges(
+        "validacion_entrada_inicial", enrutar_tras_validacion_entrada_inicial,
+        {"rechazado": END, "ok": "buscador_documentos"},
+    )
 
     builder.add_edge("buscador_documentos", "confirmar_ejecucion")
     builder.add_conditional_edges(

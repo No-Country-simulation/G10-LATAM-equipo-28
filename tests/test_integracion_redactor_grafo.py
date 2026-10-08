@@ -65,7 +65,8 @@ def test_canal_nuevo_prioriza_ids_originales_y_no_muta_metadatos_rag():
 
 
 def _ejecutar_grafo(monkeypatch, *, salida=None, formato="Flashcards", stub=False,
-                    limiter=None, parametros=None, rechazo=False, mensaje_usuario=None):
+                    limiter=None, parametros=None, rechazo=False, mensaje_usuario=None,
+                    tema_pedido_chat="redes", entrada_extra=None):
     """Grafo oficial y HITL reales; únicamente servicios externos usan dobles."""
     llamadas, pedidos, specs, conexiones, datos_investigador = [], [], [], [], []
     respuesta = deepcopy(salida if salida is not None else salida_valida(formato))
@@ -166,8 +167,8 @@ def _ejecutar_grafo(monkeypatch, *, salida=None, formato="Flashcards", stub=Fals
                 construir_critico_revisor=construir_critico_revisor,
             )
             config = {"configurable": {"thread_id": "pr7-integracion"}}
-            inicio = await pipeline.ainvoke({
-                "tema_pedido_chat": "redes",
+            estado_inicial = {
+                "tema_pedido_chat": tema_pedido_chat,
                 "mensajes": ([{"role": "user", "content": mensaje_usuario}]
                              if mensaje_usuario is not None else []),
                 "intentos_redactor": 0,
@@ -176,7 +177,11 @@ def _ejecutar_grafo(monkeypatch, *, salida=None, formato="Flashcards", stub=Fals
                 "contenido_adaptado": {"titulo": "Anterior", "items": [{}]},
                 "metadatos": {"conceptos_clave": ["anterior"]},
                 "aprobado": True, "evaluacion_calidad": {"observaciones": "Anterior"},
-            }, config)
+            }
+            estado_inicial.update(entrada_extra or {})
+            inicio = await pipeline.ainvoke(estado_inicial, config)
+            if not inicio.get("__interrupt__"):
+                return inicio
             assert inicio["__interrupt__"]
             resultado = await pipeline.ainvoke(Command(resume={"confirmado": True}), config)
             if resultado.get("__interrupt__"):
@@ -251,8 +256,48 @@ def test_inyeccion_directa_se_rechaza_sin_invocar_supervisor_ni_redactor(monkeyp
     assert resultado["status"] == "error"
     assert resultado["validacion_entrada_ok"] is False
     assert "supervisor_invocado" not in pedidos
+    assert not any(isinstance(pedido, tuple) for pedido in pedidos)
     assert not llamadas and not specs
     assert resultado["contenido_adaptado"] is None
+
+
+@pytest.mark.parametrize(("tema", "extra"), [
+    (" ", None),
+    ("x" * 1_001, None),
+    ("redes", {"formato_salida": "Formato inventado"}),
+    ("redes", {"perfil_destinatario": 42}),
+    ("redes", {"formato_salida": "Guion de Clase"}),
+])
+def test_entrada_invalida_se_rechaza_antes_de_listar_fuentes(monkeypatch, tema, extra):
+    resultado, llamadas, pedidos, specs = _ejecutar_grafo(
+        monkeypatch, tema_pedido_chat=tema, entrada_extra=extra,
+    )
+    assert resultado["status"] == "error"
+    assert resultado["validacion_entrada_ok"] is False
+    assert not any(isinstance(pedido, tuple) for pedido in pedidos)
+    assert not llamadas and not specs
+
+
+@pytest.mark.parametrize("respuesta", [
+    {"confirmado": "false", "objeto_id_confirmado": "fuentes/guia.pdf"},
+    {"confirmado": 1, "objeto_id_confirmado": "fuentes/guia.pdf"},
+    {"confirmado": True, "objeto_id_confirmado": 42},
+    None,
+])
+def test_confirmacion_hitl_malformada_no_autoriza_ingesta(monkeypatch, respuesta):
+    monkeypatch.setattr(grafo, "interrupt", lambda _payload: respuesta)
+    resultado = grafo.nodo_confirmar_ejecucion({"candidatos_documento": []})
+    assert resultado["ejecucion_confirmada"] is False
+    assert resultado["status"] == "error"
+    assert grafo.enrutar_tras_confirmar_ejecucion(resultado) == "cancelado"
+
+
+def test_respuesta_hitl_modificacion_malformada_no_llega_al_modificador(monkeypatch):
+    monkeypatch.setattr(grafo, "interrupt", lambda _payload: ["no es un objeto"])
+    resultado = grafo.nodo_confirmar_modificacion({"vueltas_modificacion": 0})
+    validacion = grafo.nodo_validacion_modificacion(resultado)
+    assert validacion["validacion_entrada_ok"] is False
+    assert grafo.enrutar_tras_validacion_modificacion({**resultado, **validacion}) == "rechazado"
 
 
 def test_factory_crea_un_solo_limiter_y_conserva_dos_generaciones_totales(monkeypatch):

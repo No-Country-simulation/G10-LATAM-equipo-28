@@ -44,6 +44,10 @@ _ALLOWLIST_ENV = "NUEVAMENTE_RED_ALLOWLIST"
 
 def _host_ascii(host: str) -> str:
     try:
+        return ipaddress.ip_address(host).compressed.lower()
+    except ValueError:
+        pass
+    try:
         host = host.rstrip(".").encode("idna").decode("ascii").lower()
     except UnicodeError:
         raise ErrorGuardiaRed("El destino tiene un nombre de host inválido.") from None
@@ -146,7 +150,8 @@ def validar_url_destino(
         if resolver_dns:
             _validar_ips_publicas(host, puerto, resolver)
     ruta = partes.path or "/"
-    return urlunsplit((partes.scheme.lower(), f"{host}:{puerto}" if puerto not in (80, 443) else host,
+    host_url = f"[{host}]" if ":" in host else host
+    return urlunsplit((partes.scheme.lower(), f"{host_url}:{puerto}" if puerto not in (80, 443) else host_url,
                        ruta, partes.query, ""))
 
 

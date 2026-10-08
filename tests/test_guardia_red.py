@@ -24,6 +24,9 @@ def test_permite_proveedor_https_conocido():
     "https://127.0.0.1/v1",
     "https://169.254.169.254/latest/meta-data",
     "http://10.0.0.4:8080/admin",
+    "http://2130706433/",
+    "http://0x7f000001/",
+    "http://0177.0.0.1/",
     "file:///etc/passwd",
     "https://api.groq.com:8443/v1",
     "https://[::1]/",
@@ -35,6 +38,7 @@ def test_rechaza_destinos_malformados_o_sensibles(url):
 
 def test_ollama_solo_puede_usar_loopback_en_puerto_local():
     assert validar_endpoint_proveedor("ollama", "http://127.0.0.1:11434") == "http://127.0.0.1:11434/"
+    assert validar_endpoint_proveedor("ollama", "http://[::1]:11434") == "http://[::1]:11434/"
     with pytest.raises(ErrorGuardiaRed):
         validar_endpoint_proveedor("ollama", "http://192.168.1.8:11434")
     with pytest.raises(ErrorGuardiaRed):
@@ -56,6 +60,26 @@ def test_allowlist_rechaza_comodines_y_acepta_host_extra_exacto(monkeypatch):
 def test_resolucion_dns_rechaza_cualquier_ip_no_global():
     def resolver(host, port, type):
         return [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("10.1.2.3", port))]
+
+    with pytest.raises(ErrorGuardiaRed, match="local o reservada"):
+        validar_url_destino("https://api.groq.com", resolver_dns=True, resolver=resolver)
+
+
+@pytest.mark.parametrize("resolver", [
+    lambda host, port, type: [],
+    lambda host, port, type: (_ for _ in ()).throw(socket.gaierror("fallo local")),
+])
+def test_resolucion_dns_falla_cerrado_si_no_hay_resultado(resolver):
+    with pytest.raises(ErrorGuardiaRed):
+        validar_url_destino("https://api.groq.com", resolver_dns=True, resolver=resolver)
+
+
+def test_resolucion_dns_rechaza_respuesta_mixta_publica_y_privada():
+    def resolver(host, port, type):
+        return [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("8.8.8.8", port)),
+            (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("fd00::1", port, 0, 0)),
+        ]
 
     with pytest.raises(ErrorGuardiaRed, match="local o reservada"):
         validar_url_destino("https://api.groq.com", resolver_dns=True, resolver=resolver)

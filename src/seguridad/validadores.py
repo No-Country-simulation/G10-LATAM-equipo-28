@@ -10,7 +10,14 @@ from typing import Any, Mapping
 from pydantic import ValidationError
 
 from src.config import settings
-from src.contracts import SolicitudAdaptacion
+from src.contracts import (
+    FORMATOS_IMPLEMENTADOS_MVP,
+    FormatoSalida,
+    NivelDetalle,
+    NichoSector,
+    PerfilDestinatario,
+    SolicitudAdaptacion,
+)
 from src.contracts.request import LONGITUD_MINIMA_CONTENIDO
 
 MAX_LONGITUD_TEMA = 1_000
@@ -106,6 +113,8 @@ def mensajes_con_entrada_sanitizada(mensajes: Any, texto: str | None) -> Any:
 
 def normalizar_entrada_usuario(texto: str, *, campo: str, maximo: int) -> str:
     """Normaliza Unicode y saltos de línea sin borrar contenido silenciosamente."""
+    if not isinstance(texto, str):
+        raise ErrorValidacionEntrada("ENTRADA_INVALIDA", f"El campo {campo} debe ser texto.")
     normalizado = unicodedata.normalize("NFC", texto).replace("\r\n", "\n").replace("\r", "\n").strip()
     if not normalizado:
         raise ErrorValidacionEntrada("ENTRADA_VACIA", f"El campo {campo} no puede quedar vacío.")
@@ -138,33 +147,45 @@ def _validar_contenido_documento(contenido: Any) -> None:
         raise ErrorValidacionEntrada("DOCUMENTO_INVALIDO", "El documento contiene caracteres de control no permitidos.")
 
 
-def validar_entrada_pre_llm(estado: Mapping[str, Any]) -> EntradaValidada:
-    """Valida usuario y documento después de la ingesta y antes del Supervisor.
+def _validar_enum_opcional(estado: Mapping[str, Any], campo: str, tipo_enum: type) -> Any:
+    valor = estado.get(campo)
+    if valor is None:
+        return None
+    try:
+        return tipo_enum(valor)
+    except (TypeError, ValueError):
+        raise ErrorValidacionEntrada(
+            "PARAMETRO_INVALIDO", f"El campo {campo} no coincide con los valores permitidos."
+        ) from None
 
-    El texto del documento se trata como material de referencia no confiable:
-    aquí se valida tamaño y codificación, pero no se bloquea por mencionar
-    seguridad, instrucciones o ataques.
-    """
+
+def validar_entrada_usuario(estado: Mapping[str, Any]) -> EntradaValidada:
+    """Valida tema, historial y parámetros tipados antes de cualquier llamada externa."""
     tema = normalizar_entrada_usuario(
-        estado.get("tema_pedido_chat") or "", campo="tema", maximo=MAX_LONGITUD_TEMA
+        estado.get("tema_pedido_chat"), campo="tema", maximo=MAX_LONGITUD_TEMA
     )
     if _detectar_instruccion_directa(tema):
         raise ErrorValidacionEntrada(
             "INSTRUCCION_NO_PERMITIDA",
             "La solicitud contiene una instrucción que no se puede procesar. Reformula el pedido de adaptación.",
         )
-    _validar_contenido_documento(estado.get("documento_contenido"))
-    titulo = normalizar_entrada_usuario(
-        estado.get("documento_titulo") or "", campo="documento_titulo", maximo=300
-    )
-    if titulo != estado.get("documento_titulo"):
-        # El contrato exige fidelidad al título de origen; no se modifica.
-        if titulo != str(estado.get("documento_titulo") or "").strip():
-            raise ErrorValidacionEntrada("TITULO_INVALIDO", "El título del documento contiene caracteres no permitidos.")
-    if "perfil_destinatario" in estado or "formato_salida" in estado:
-        # Si la interfaz ya entrega parámetros tipados, se rechazan aquí antes
-        # de permitir que el Supervisor consuma una llamada para reinterpretarlos.
-        validar_solicitud_adaptacion(estado)
+
+    tipos_enum = {
+        "perfil_destinatario": PerfilDestinatario,
+        "formato_salida": FormatoSalida,
+        "nicho_sector": NichoSector,
+        "nivel_detalle": NivelDetalle,
+    }
+    formato = None
+    for campo, tipo_enum in tipos_enum.items():
+        valor = _validar_enum_opcional(estado, campo, tipo_enum)
+        if campo == "formato_salida":
+            formato = valor
+    if formato is not None and formato not in FORMATOS_IMPLEMENTADOS_MVP:
+        raise ErrorValidacionEntrada(
+            "FORMATO_NO_DISPONIBLE",
+            "El formato solicitado está definido, pero no está disponible en esta versión.",
+        )
 
     mensajes = estado.get("mensajes", [])
     if not isinstance(mensajes, (list, tuple)):
@@ -182,6 +203,30 @@ def validar_entrada_pre_llm(estado: Mapping[str, Any]) -> EntradaValidada:
                 "La solicitud contiene una instrucción que no se puede procesar. Reformula el pedido de adaptación.",
             )
     return EntradaValidada(mensaje_usuario=mensaje, tema_pedido_chat=tema)
+
+
+def validar_entrada_pre_llm(estado: Mapping[str, Any]) -> EntradaValidada:
+    """Valida el usuario y documento después de ingesta y antes del Supervisor.
+
+    El texto del documento se trata como material de referencia no confiable:
+    aquí se valida tamaño y codificación, pero no se bloquea por mencionar
+    seguridad, instrucciones o ataques.
+    """
+    entrada = validar_entrada_usuario(estado)
+    _validar_contenido_documento(estado.get("documento_contenido"))
+    titulo = normalizar_entrada_usuario(
+        estado.get("documento_titulo") or "", campo="documento_titulo", maximo=300
+    )
+    if titulo != estado.get("documento_titulo"):
+        # El contrato exige fidelidad al título de origen; no se modifica.
+        if titulo != str(estado.get("documento_titulo") or "").strip():
+            raise ErrorValidacionEntrada("TITULO_INVALIDO", "El título del documento contiene caracteres no permitidos.")
+    if "perfil_destinatario" in estado or "formato_salida" in estado:
+        # Si la interfaz ya entrega parámetros tipados, se rechazan aquí antes
+        # de permitir que el Supervisor consuma una llamada para reinterpretarlos.
+        validar_solicitud_adaptacion(estado)
+
+    return entrada
 
 
 def validar_solicitud_adaptacion(estado: Mapping[str, Any]) -> SolicitudAdaptacion:
