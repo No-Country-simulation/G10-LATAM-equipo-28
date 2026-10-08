@@ -7,6 +7,8 @@ del tema y no accede a OCI.
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
 from src.contracts import (
@@ -19,6 +21,13 @@ from src.errores import ErrorLLM, ErrorSalidaInvalida
 from src.prompts.supervisor import construir_prompt_supervisor
 
 from .protocolos import GeneradorEstructurado
+
+
+#: Valores textuales que los modelos escriben cuando no pueden llenar un campo
+#: opcional ("null" en vez de null). Se normalizan a None: None = el usuario
+#: no lo indicó. Solo coincide el valor COMPLETO (tras strip + lower); un tema
+#: que mencione "null" con más contexto no se toca.
+NULOS_TEXTUALES = frozenset({"null", "none", "n/a", ""})
 
 
 class IntencionOut(BaseModel):
@@ -43,6 +52,20 @@ class IntencionOut(BaseModel):
             return None
         limpio = valor.strip()
         return limpio or None
+
+    @field_validator(
+        "tema_consulta",
+        "perfil_destinatario",
+        "formato_salida",
+        "nicho_sector",
+        "nivel_detalle",
+        mode="before",
+    )
+    @classmethod
+    def _nulos_textuales_a_none(cls, valor: Any) -> Any:
+        if isinstance(valor, str) and valor.strip().lower() in NULOS_TEXTUALES:
+            return None
+        return valor
 
 
 async def clasificar_intencion(

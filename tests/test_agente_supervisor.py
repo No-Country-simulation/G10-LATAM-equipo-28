@@ -96,6 +96,34 @@ def test_parametros_faltantes_quedan_en_none():
     assert intencion.nivel_detalle is None
 
 
+def test_nulos_textuales_del_modelo_se_normalizan_a_none():
+    generador = FakeGenerator(
+        {
+            "tema_consulta": "sprint",
+            "perfil_destinatario": "null",
+            "formato_salida": "None",
+            "nicho_sector": "n/a",
+            "nivel_detalle": "",
+        }
+    )
+
+    intencion = asyncio.run(clasificar_intencion("sprint", None, generador))
+
+    assert intencion.tema_consulta == "sprint"
+    assert intencion.perfil_destinatario is None
+    assert intencion.formato_salida is None
+    assert intencion.nicho_sector is None
+    assert intencion.nivel_detalle is None
+
+
+def test_tema_nulo_textual_queda_en_none():
+    generador = FakeGenerator({"tema_consulta": "null"})
+
+    intencion = asyncio.run(clasificar_intencion("hola", None, generador))
+
+    assert intencion.tema_consulta is None
+
+
 # =============================================================================
 # Fallback de tema
 # =============================================================================

@@ -22,10 +22,17 @@ from src.errores import ErrorLLM
 
 
 class GeneradorLangchain:
-    """Envuelve un chat model de LangChain con `with_structured_output`."""
+    """Envuelve un chat model de LangChain con `with_structured_output`.
 
-    def __init__(self, modelo: Any) -> None:
+    `method` se propaga tal cual al backend (None = default del backend).
+    Existe porque no todos los proveedores OpenAI-compatibles soportan el
+    default: DeepSeek rechaza `json_schema` con error 400 y necesita
+    `method="function_calling"`.
+    """
+
+    def __init__(self, modelo: Any, method: str | None = None) -> None:
         self._modelo = modelo
+        self._method = method
 
     async def generate(self, *, prompt: str, output_model: type[BaseModel]) -> Any:
         """Pide al modelo una respuesta validable contra `output_model`.
@@ -35,7 +42,9 @@ class GeneradorLangchain:
         hace el agente, que es quien conoce su propio contrato de salida.
         """
         try:
-            estructurado = self._modelo.with_structured_output(output_model)
+            estructurado = self._modelo.with_structured_output(
+                output_model, method=self._method
+            )
             return await estructurado.ainvoke(prompt)
         except ErrorLLM:
             raise

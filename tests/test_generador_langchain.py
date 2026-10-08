@@ -45,10 +45,14 @@ class FakeModelo:
         self.salida = salida
         self.error = error
         self.schema: type[BaseModel] | None = None
+        self.kwargs: dict[str, Any] = {}
         self.runnable = FakeEstructurado(salida, error)
 
-    def with_structured_output(self, schema: type[BaseModel]) -> FakeEstructurado:
+    def with_structured_output(
+        self, schema: type[BaseModel], **kwargs: Any
+    ) -> FakeEstructurado:
         self.schema = schema
+        self.kwargs = kwargs
         return self.runnable
 
 
@@ -122,3 +126,30 @@ def test_error_llm_del_modelo_se_propaga_sin_reenvolver():
         )
 
     assert excinfo.value is original
+
+
+# =============================================================================
+# Parámetro `method` (quirks de proveedor)
+# =============================================================================
+
+
+def test_method_none_es_el_default_y_se_propaga():
+    modelo = FakeModelo({"tema_consulta": "VCN"})
+
+    asyncio.run(
+        GeneradorLangchain(modelo).generate(prompt="hola", output_model=SalidaEjemplo)
+    )
+
+    assert modelo.kwargs == {"method": None}
+
+
+def test_method_explicito_se_propaga_a_with_structured_output():
+    modelo = FakeModelo({"tema_consulta": "VCN"})
+
+    asyncio.run(
+        GeneradorLangchain(modelo, method="function_calling").generate(
+            prompt="hola", output_model=SalidaEjemplo
+        )
+    )
+
+    assert modelo.kwargs == {"method": "function_calling"}
