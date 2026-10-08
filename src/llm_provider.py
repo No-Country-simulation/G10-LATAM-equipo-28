@@ -39,6 +39,7 @@ from __future__ import annotations
 from typing import Any
 
 from config import ConfigError, settings
+from seguridad.guardia_red import validar_endpoint_proveedor
 
 # =============================================================================
 # Modelos por defecto — VERIFICAR antes de usar (ver nota de arriba)
@@ -85,6 +86,11 @@ def _falta_dependencia(paquete: str, proveedor: str) -> ProviderError:
 
 def _build_chat(provider: str, model: str, temperature: float) -> Any:
     """Construye un modelo de chat para el proveedor dado."""
+
+    if provider == "ollama":
+        validar_endpoint_proveedor(provider, settings.ollama_base_url)
+    else:
+        validar_endpoint_proveedor(provider)
 
     if provider == "gemini":
         try:
@@ -195,6 +201,11 @@ def get_embeddings() -> Any:
             f"No hay modelo de embeddings por defecto para {provider!r}. "
             f"Definí EMBEDDINGS_MODEL en el .env."
         )
+
+    if provider == "ollama":
+        validar_endpoint_proveedor(provider, settings.ollama_base_url)
+    else:
+        validar_endpoint_proveedor(provider)
 
     if provider == "ollama":
         try:

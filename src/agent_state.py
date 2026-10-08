@@ -60,6 +60,7 @@ class AgentState(TypedDict):
     thread_id: str  # st.user.email una vez esté OAuth (sección 13)
 
     input_sanitizado: Optional[str]
+    validacion_entrada_ok: NotRequired[Optional[bool]]
 
     # --- Buscador de Documentos (5to spec) ---
     tema_pedido_chat: Optional[str]

@@ -26,6 +26,7 @@ from langchain_core.callbacks import BaseCallbackHandler
 from langchain_openai import ChatOpenAI
 
 from seguridad.rate_limiter import RateLimiter, estimar_tokens
+from seguridad.guardia_red import validar_endpoint_proveedor
 
 load_dotenv()
 
@@ -73,6 +74,7 @@ class _RegistroRateLimiterCallback(BaseCallbackHandler):
 
 def _build_chat_model(modelo: str, rate_limiter: RateLimiter, tokens_estimados: int,
                        temperature: float, max_tokens: int) -> ChatOpenAI:
+    validar_endpoint_proveedor("groq", GROQ_BASE_URL)
     callback = _RegistroRateLimiterCallback(modelo, rate_limiter, tokens_estimados)
     return ChatOpenAI(
         model=modelo,
