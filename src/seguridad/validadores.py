@@ -221,9 +221,11 @@ def validar_entrada_pre_llm(estado: Mapping[str, Any]) -> EntradaValidada:
         # El contrato exige fidelidad al título de origen; no se modifica.
         if titulo != str(estado.get("documento_titulo") or "").strip():
             raise ErrorValidacionEntrada("TITULO_INVALIDO", "El título del documento contiene caracteres no permitidos.")
-    if "perfil_destinatario" in estado or "formato_salida" in estado:
-        # Si la interfaz ya entrega parámetros tipados, se rechazan aquí antes
-        # de permitir que el Supervisor consuma una llamada para reinterpretarlos.
+    if estado.get("perfil_destinatario") is not None and estado.get("formato_salida") is not None:
+        # Con ambos campos completos se puede aplicar el contrato antes del LLM.
+        # Los valores ausentes o None son provisionales: el Supervisor puede
+        # extraerlos del mensaje, pero validacion_solicitud exigira el contrato
+        # completo antes de continuar al Investigador.
         validar_solicitud_adaptacion(estado)
 
     return entrada
@@ -238,6 +240,7 @@ def validar_solicitud_adaptacion(estado: Mapping[str, Any]) -> SolicitudAdaptaci
             "formato_salida", "nicho_sector", "nivel_detalle",
         )
         if campo in estado
+        and not (campo in {"nicho_sector", "nivel_detalle"} and estado.get(campo) is None)
     }
     try:
         solicitud = SolicitudAdaptacion.model_validate(datos)

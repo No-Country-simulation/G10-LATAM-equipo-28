@@ -4,7 +4,7 @@ Estado local de Sprint 3. Este documento describe los controles en el checkout d
 
 ## Límites observados en el código
 
-- La petición entra como `tema_pedido_chat`, mensajes de usuario y, opcionalmente, campos tipados. `validacion_entrada_inicial` comprueba esos datos antes de cualquier llamada MCP; luego el grafo busca una fuente, pide confirmación, descarga el objeto y ejecuta la validación completa antes del Supervisor.
+- La petición entra como `tema_pedido_chat`, mensajes de usuario y, opcionalmente, campos tipados. `validacion_entrada_inicial` comprueba esos datos antes de cualquier llamada MCP; luego el grafo busca una fuente, pide confirmación y descarga el objeto. Antes del Supervisor valida el documento y los campos tipados no nulos; comprueba la solicitud completa después de clasificar.
 - `SolicitudAdaptacion` aplica Pydantic y `extra="forbid"`, pero el Redactor la construía después de que el Supervisor ya había llamado al LLM. El flujo ahora filtra texto y documento antes del Supervisor, y valida los parámetros clasificados antes del Investigador.
 - Los documentos se descargan mediante MCP. El Redactor, Investigador, Revisor y Modificador reciben datos de fuente dentro de prompts que ya los delimitan como contenido no confiable. La detección de órdenes hostiles se aplica al mensaje directo del usuario; no se bloquean documentos por mencionar ataques, políticas o términos de seguridad.
 - Los agentes reciben un generador estructurado, no herramientas MCP. El grafo obtiene las herramientas del servidor en nodos determinísticos. Ahora cada etapa resuelve solo su herramienta autorizada: listar fuentes, descargar una fuente o guardar la salida formateada.
@@ -15,7 +15,7 @@ Estado local de Sprint 3. Este documento describe los controles en el checkout d
 
 `src/seguridad/validadores.py` conserva el contrato existente y limita el tema a 1.000 caracteres, el mensaje de usuario a 12.000, el título al límite contractual de 300 y el documento al mínimo ya definido por `SolicitudAdaptacion` y al máximo configurado por `MAX_DOCUMENT_SIZE_MB`. Rechaza texto no válido y caracteres de control, normaliza Unicode a NFC, saltos de línea y espacios exteriores, y no devuelve valores suministrados dentro de los errores.
 
-La heurística de prompt injection busca órdenes directas de anulación de reglas o revelación de secretos al comienzo del mensaje. Es intencionalmente estrecha: el tema de una clase, una explicación de prompt injection o un documento que cite una frase de ataque no activa el bloqueo. La clasificación del Supervisor también está delimitada en su prompt como datos de usuario. Si un formulario entrega perfil o formato antes del Supervisor, Pydantic los valida antes de gastar una llamada. La salida del Supervisor y el tema que recibirá el Investigador se validan antes de la siguiente llamada LLM.
+La heurística de prompt injection busca órdenes directas de anulación de reglas o revelación de secretos al comienzo del mensaje. Es intencionalmente estrecha: el tema de una clase, una explicación de prompt injection o un documento que cite una frase de ataque no activa el bloqueo. La clasificación del Supervisor también está delimitada en su prompt como datos de usuario. Antes del Supervisor, los enum no nulos enviados por un formulario se validan y se rechazan si son inválidos; si perfil o formato faltan o son `None`, se consideran pendientes y no se ejecuta el contrato completo todavía. Tras la clasificación, `SolicitudAdaptacion` exige perfil y formato válidos antes de continuar al Investigador. Así, los datos disponibles se rechazan pronto, pero un campo provisional no impide al Supervisor clasificar el pedido del usuario.
 
 Las instrucciones para modificar un paquete se limitan a texto de hasta 2.000 caracteres antes de invocar al Modificador. Un objeto elegido por UI debe pertenecer al prefijo `fuentes/` y no puede contener segmentos `.` o `..`.
 
@@ -57,6 +57,15 @@ Antes de aplicar la propuesta, Franklin debe comprobar la sintaxis IAM vigente e
 - La allowlist en Python no limita tráfico de otras bibliotecas o procesos ni impide DNS rebinding sin un transporte fijado. La política de egress sigue pendiente de Franklin.
 - No se ejecutaron llamadas reales a LLM, Hugging Face, MCP ni OCI; las pruebas externas usan dobles.
 - El `python` global del PATH no tiene las dependencias. El `.venv` local sí; sus faltantes de configuración son `GEMINI_API_KEY`, `OCI_NAMESPACE` y `~/.oci/config`. No se consultaron ni imprimieron valores secretos.
+
+## Revisión focalizada de compatibilidad — 08/10/2026
+
+- `SolicitudAdaptacion` mantiene perfil y formato obligatorios y no anulables. `AgentState` los declara como `Optional[str]`; por ello, antes de Supervisor puede haber ausencia o `None`, pero el flujo no los entrega al Investigador hasta completar el contrato.
+- Se reprodujo que el validador anterior llamaba al contrato completo al encontrar cualquiera de las claves. Perfil solo, formato solo y una combinación explícita con `None` fallaban antes del Supervisor. La validación temprana ahora admite esos casos provisionales, sigue validando cualquier enum no nulo y aplica el contrato completo si perfil y formato ya están disponibles.
+- `nicho_sector` y `nivel_detalle` tienen defaults contractuales (`General` y `Estandar`). Si el Supervisor devuelve `None`, la proyección omite esos campos para que Pydantic aplique los defaults; la validación posterior escribe los valores canónicos resultantes en `AgentState` antes del Investigador y Redactor. Los campos obligatorios perfil/formato siguen rechazando `None` al final de la clasificación.
+- Si el Supervisor devuelve `None` para un valor obligatorio, o una clasificación que no satisface `SolicitudAdaptacion`, el nodo de validación corta el flujo antes del Investigador. Un fallo de salida estructurada del Supervisor también se convierte en error controlado y descarta contenido/almacenamiento residuales.
+- `src/app.py` no existe en `dev`; por tanto, no hay una interfaz desplegada en este checkout que permita confirmar el payload real del formulario. La compatibilidad se probó con estados de `AgentState` representativos y el grafo compilado usando dobles para las integraciones externas.
+- La guardia de red se ejecuta en las fábricas antes de construir los clientes: valida URL, host exacto, esquema y puerto; Ollama se limita a loopback en 11434. No controla la conexión efectiva, DNS resuelto, pinning de IP ni redirecciones automáticas del SDK. Groq y los proveedores configurados conservan sus endpoints fijados; Ollama sigue siendo configurable dentro de esa política local. Egress/firewall es responsabilidad de infraestructura.
 
 ## Auditoría final local — 07/10/2026
 

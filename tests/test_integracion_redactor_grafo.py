@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src import grafo
 from src.agentes.redactor import obtener_solicitud_redactor
 from src.contracts import NichoSector, NivelDetalle
+from src.errores import ErrorSalidaInvalida
 from test_agente_redactor_pedagogico import SOLICITUD_BASE, SPEC, salida_valida
 from test_nodo_redactor import ejecutar, state_base
 
@@ -100,6 +101,8 @@ def _ejecutar_grafo(monkeypatch, *, salida=None, formato="Flashcards", stub=Fals
 
         async def supervisor(state):
             pedidos.append("supervisor_invocado")
+            if isinstance(parametros, Exception):
+                raise parametros
             return parametros if parametros is not None else {
                 campo: valor for campo, valor in {**SOLICITUD_BASE, "formato_salida": formato}.items()
                 if campo not in ("documento_titulo", "documento_contenido")
@@ -246,6 +249,81 @@ def test_parametros_incompletos_no_generan_ni_guardan(monkeypatch):
     assert "contrato de entrada" in resultado["error"]
     assert resultado["intentos_redactor"] == 0
     assert resultado["almacenamiento_oci"] is None
+
+
+@pytest.mark.parametrize("entrada_extra", [
+    {"perfil_destinatario": None, "formato_salida": None},
+    {"perfil_destinatario": "Principiante"},
+    {"formato_salida": "Flashcards"},
+    {"perfil_destinatario": "Principiante", "formato_salida": None},
+    {"perfil_destinatario": None, "formato_salida": "Flashcards"},
+])
+def test_supervisor_completa_parametros_pendientes_y_el_flujo_pedagogico_sigue(monkeypatch, entrada_extra):
+    resultado, llamadas, pedidos, specs = _ejecutar_grafo(
+        monkeypatch, entrada_extra=entrada_extra,
+    )
+
+    assert "supervisor_invocado" in pedidos
+    assert resultado["status"] == "exito"
+    assert resultado["contenido_adaptado"] is not None
+    assert resultado["metadatos"]["formato_generado"] == "Flashcards"
+    assert len(llamadas) == 1 and len(specs) == 1
+
+
+@pytest.mark.parametrize("clasificacion", [
+    {"perfil_destinatario": "Astronauta", "formato_salida": "Flashcards"},
+    {"perfil_destinatario": "Principiante", "formato_salida": "Guion de Clase"},
+])
+def test_clasificacion_invalida_del_supervisor_se_rechaza_sin_generar_ni_guardar(monkeypatch, clasificacion):
+    resultado, llamadas, pedidos, specs = _ejecutar_grafo(
+        monkeypatch,
+        parametros=clasificacion,
+    )
+
+    assert "supervisor_invocado" in pedidos
+    assert resultado["status"] == "error"
+    assert resultado["validacion_entrada_ok"] is False
+    assert resultado["contenido_adaptado"] is None
+    assert resultado["almacenamiento_oci"] is None
+    assert not llamadas and not specs
+
+
+def test_error_de_esquema_del_supervisor_termina_controlado_y_sin_detalles(monkeypatch):
+    resultado, llamadas, pedidos, specs = _ejecutar_grafo(
+        monkeypatch,
+        entrada_extra={
+            "perfil_destinatario": "Principiante",
+            "formato_salida": "Flashcards",
+        },
+        parametros=ErrorSalidaInvalida("valor privado del proveedor"),
+    )
+
+    assert "supervisor_invocado" in pedidos
+    assert resultado["status"] == "error"
+    assert resultado["validacion_entrada_ok"] is False
+    assert "valor privado" not in resultado["error"]
+    assert resultado["contenido_adaptado"] is None
+    assert resultado["almacenamiento_oci"] is None
+    assert not llamadas and not specs
+
+
+def test_none_en_campos_opcionales_del_supervisor_aplica_defaults_y_sigue(monkeypatch):
+    resultado, _, pedidos, specs = _ejecutar_grafo(
+        monkeypatch,
+        parametros={
+            "tema_consulta": "redes",
+            "perfil_destinatario": "Principiante",
+            "formato_salida": "Flashcards",
+            "nicho_sector": None,
+            "nivel_detalle": None,
+        },
+    )
+
+    assert "supervisor_invocado" in pedidos
+    assert resultado["status"] == "exito"
+    assert resultado["nicho_sector"] == "General"
+    assert resultado["nivel_detalle"] == "Estandar"
+    assert specs[0][1] == NivelDetalle.ESTANDAR
 
 
 def test_inyeccion_directa_se_rechaza_sin_invocar_supervisor_ni_redactor(monkeypatch):

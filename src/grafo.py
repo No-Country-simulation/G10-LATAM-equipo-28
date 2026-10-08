@@ -52,6 +52,7 @@ from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
 from src.agent_state import AgentState
+from src.errores import ErrorLLM, ErrorSalidaInvalida
 from src.agentes.generador_llm_client import GeneradorLLMClient
 from src.agentes.critico_revisor import construir_nodo_critico_revisor
 from src.agentes.modificador import construir_nodo_modificador
@@ -262,12 +263,24 @@ def enrutar_tras_validacion(state: AgentState) -> str:
 
 def nodo_validacion_solicitud(state: AgentState) -> dict:
     """Comprueba la salida del Supervisor contra el contrato antes del Investigador."""
+    if state.get("validacion_entrada_ok") is False:
+        return _estado_error_validacion(
+            state.get("error") or "No se pudo validar la clasificación de la solicitud."
+        )
     try:
-        validar_solicitud_adaptacion(state)
+        solicitud = validar_solicitud_adaptacion(state)
         tema = validar_tema_consulta(state.get("tema_consulta"))
     except ErrorValidacionEntrada as exc:
         return _estado_error_validacion(exc.mensaje)
-    return {"tema_consulta": tema, "validacion_entrada_ok": True, "error": None}
+    return {
+        "tema_consulta": tema,
+        "perfil_destinatario": solicitud.perfil_destinatario.value,
+        "formato_salida": solicitud.formato_salida.value,
+        "nicho_sector": solicitud.nicho_sector.value,
+        "nivel_detalle": solicitud.nivel_detalle.value,
+        "validacion_entrada_ok": True,
+        "error": None,
+    }
 
 
 def enrutar_tras_validacion_solicitud(state: AgentState) -> str:
@@ -511,7 +524,12 @@ async def construir_grafo(
         estado_seguro["mensajes"] = mensajes_con_entrada_sanitizada(
             state.get("mensajes", []), state.get("input_sanitizado")
         )
-        return await supervisor(estado_seguro)
+        try:
+            return await supervisor(estado_seguro)
+        except (ErrorLLM, ErrorSalidaInvalida):
+            return _estado_error_validacion(
+                "No se pudo clasificar la solicitud de forma válida. Intenta reformularla."
+            )
 
     builder.add_node("supervisor", supervisor_con_entrada_sanitizada)
     builder.add_node("validacion_solicitud", nodo_validacion_solicitud)
