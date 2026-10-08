@@ -133,14 +133,15 @@ def test_error_llm_del_modelo_se_propaga_sin_reenvolver():
 # =============================================================================
 
 
-def test_method_none_es_el_default_y_se_propaga():
+def test_sin_method_no_se_pasa_el_argumento():
+    """Con method=None NO se pasa el kwarg: el backend rechaza None explícito."""
     modelo = FakeModelo({"tema_consulta": "VCN"})
 
     asyncio.run(
         GeneradorLangchain(modelo).generate(prompt="hola", output_model=SalidaEjemplo)
     )
 
-    assert modelo.kwargs == {"method": None}
+    assert modelo.kwargs == {}
 
 
 def test_method_explicito_se_propaga_a_with_structured_output():
