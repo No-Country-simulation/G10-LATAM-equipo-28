@@ -27,14 +27,14 @@ def generar_reporte_desde_json(datos_o_ruta_json, salida_pdf="informe_generado.p
         "---\n",
         "## 1. Resumen Conceptual\n",
         f"{resumen}\n",
-        "## 2. Preguntas de Autoevaluación y Respuestas Didácticas\n"
+        "## 2. Preguntas de Autoevaluacion y Respuestas Didacticas\n"
     ]
     for i, p in enumerate(preguntas, 1):
         lineas_md.append(f"### Pregunta {i}: {p.get('pregunta', '')}")
         lineas_md.append(f"**Respuesta:** {p.get('respuesta', '')}\n")
     
     if citas:
-        lineas_md.append("## 3. Citas de Anclaje a la Fuente Técnica")
+        lineas_md.append("## 3. Citas de Anclaje a la Fuente Tecnica")
         for cita in citas:
             lineas_md.append(f"> *\"{cita}\"*\n")
             
