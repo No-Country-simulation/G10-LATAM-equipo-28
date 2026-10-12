@@ -1,4 +1,4 @@
-# 🎓 NuevaMente
+﻿# 🎓 NuevaMente
 
 **Sistema Inteligente de Adaptación y Generación de Contenido Educativo**
 
@@ -331,7 +331,9 @@ python -m pytest tests -q
 
 ---
 
+---
+
 ## 📄 Carril de Informes y Adición Multiformato
-- **Responsable:** Víctor Asencio (\eature/victor-calidad\)
+- **Responsable:** Víctor Asencio (eature/victor-calidad)
 - **Funcionalidad:** Generación dinámica de reportes en **PDF** (maquetado con ReportLab e indicadores RAG) y **Markdown** estructurado.
 - **Documentación detallada:** Consulta [docs/MODULO_INFORMES.md](docs/MODULO_INFORMES.md).
