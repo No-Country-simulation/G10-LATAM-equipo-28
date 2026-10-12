@@ -14,7 +14,7 @@ El módulo de Informes es el componente encargado de procesar la salida estructu
   - Citas de anclaje contextual a las fuentes técnicas procesadas.
 - **Exportación en Markdown estructurado (.md):**
   - Formato estandarizado compatible con plataformas de gestión del conocimiento (Notion, Obsidian, GitHub).
-  - Jerarquía clara de títulos, listas y bloques de citas (`>`).
+  - Jerarquía clara de títulos, listas y bloques de citas (>).
 
 ## 3. Arquitectura y Archivos Clave
 - `src/generador_informes.py`: Motor de transformación de datos JSON/diccionarios a PDF y Markdown.
@@ -22,7 +22,7 @@ El módulo de Informes es el componente encargado de procesar la salida estructu
 
 ## 4. Guía de Ejecución Local
 Para validar la generación autónoma de los informes:
-```bash
+``bash
 # Ejecución del generador dinámico
 python src/generador_informes.py
 
