@@ -26,9 +26,15 @@ pedagógico y nicho de aplicación. Minutos en lugar de semanas.
 fidelidad verificable a la fuente.** Cada paquete trae un `anclaje_fuente_score` calculado por un
 agente verificador independiente, y cada ítem declara de qué fragmento del documento original salió.
 
+![Creación educativa con inteligencia artificial](docs/README/infograph/Creación_educativa_con_inteligencia_artificial.png)
+
 ---
 
 ## Cómo funciona
+
+![Flujo de trabajo de NuevaMente](docs/README/infograph/Flujo_de_trabajo_de_NuevaMente.png)
+
+### Pipeline de adaptación
 
 ```mermaid
 flowchart TD
@@ -89,13 +95,20 @@ cambia de nivel cognitivo.
 
 ## Stack
 
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white) ![LangGraph](https://img.shields.io/badge/LangGraph-1.2.11-1C3C3C) ![LangChain](https://img.shields.io/badge/LangChain-1.6.3-1C3C3C) ![ChromaDB](https://img.shields.io/badge/ChromaDB-1.5.9-FFDE57) ![Pydantic](https://img.shields.io/badge/Pydantic-2.13.5-E92063) ![Streamlit](https://img.shields.io/badge/Streamlit-1.38.0%2B-FF4B4B?logo=streamlit&logoColor=white) ![Oracle Cloud](https://img.shields.io/badge/Oracle%20Cloud-OCI%20SDK%202.129.0%2B-F80000?logo=oracle&logoColor=white) ![MCP](https://img.shields.io/badge/MCP-1.30.0-8A2BE2) ![pypdf](https://img.shields.io/badge/pypdf-5.0.0%2B-2C5F2D) ![ReportLab](https://img.shields.io/badge/ReportLab-4.2.0%2B-5A5A5A)
+
 | Capa | Tecnología |
 |---|---|
+| Lenguaje | Python 3.12 |
 | LLM redactor y verificador | Google Gemini (intercambiable por `.env`: Ollama, DeepSeek, Claude, Kimi) |
 | Embeddings | Ollama local (`nomic-embed-text`) |
-| Vector store | ChromaDB, una colección por documento |
+| Framework de agentes y LLM | LangChain |
 | Orquestación | LangGraph |
+| Protocolo de herramientas | MCP (`mcp` + `langchain-mcp-adapters`) |
+| Vector store | ChromaDB, una colección por documento |
 | Validación | Pydantic v2 |
+| Extracción de documentos | pypdf |
+| Exportación PDF / Markdown | ReportLab |
 | Interfaz | Streamlit |
 | Persistencia | **Oracle Cloud Infrastructure — Object Storage, capa Always Free** |
 
@@ -265,6 +278,32 @@ Se acepta también la forma larga de cada valor (`"Principiante / Transición de
 | Grafo de orquestación y verificador | 🚧 |
 | Persistencia en OCI | 🚧 |
 | Interfaz Streamlit | 🚧 |
+
+---
+
+## Roadmap
+
+NuevaMente está diseñada para evolucionar desde un motor de adaptación de documentación técnica
+con **fidelidad verificable** hacia una plataforma de capacitación técnica a escala.
+
+| Versión | Horizonte | Enfoque |
+|---|---|---|
+| **1.0** | **Actual** | Motor de adaptación completo: ingesta (PDF · MD · TXT), pipeline RAG, orquestación multi-agente con verificación de fidelidad, salida JSON estructurada, **despliegue en OCI** (Compute + Object Storage, capa Always Free) e interfaz Streamlit. Genera **resultados multimodales**. |
+| **2.0** | **Próximos meses** | Adiciones de implementación inmediata: quiz interactivo con evaluación en tiempo real, exportación multiformato ampliada (CSV compatible con Anki), memoria de adaptaciones y perfiles guardados. |
+| **3.0** | **Un año** | Plataforma de capacitación a escala: perfiles de usuario y administrador, integración con LMS y APIs externas, catálogo de paquetes educativos y analítica de aprendizaje. |
+
+> **Nota:** Las versiones 2.0 y 3.0 describen la evolución proyectada del proyecto; la **versión
+> actual (1.0)** es la que se presenta en el Hackathon.
+
+### Roadmap visual
+
+```mermaid
+timeline
+    title Roadmap NuevaMente
+    v1.0 · ACTUAL : Motor de adaptación : RAG + multi-agente : OCI Compute + Object Storage : Resultados multimodales
+    v2.0 · PRÓXIMOS MESES : Quiz en tiempo real : Exportación multiformato : Memoria de adaptaciones : Perfiles guardados
+    v3.0 · UN AÑO : Plataforma a escala : Usuarios y administrador : Integración LMS : Analítica de aprendizaje
+```
 
 ---
 
