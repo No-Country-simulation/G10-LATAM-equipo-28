@@ -22,10 +22,20 @@ from src.errores import ErrorLLM
 
 
 class GeneradorLangchain:
-    """Envuelve un chat model de LangChain con `with_structured_output`."""
+    """Envuelve un chat model de LangChain con `with_structured_output`.
 
-    def __init__(self, modelo: Any) -> None:
+    `method` se propaga al backend **solo si se indicó** (None = se omite y el
+    backend usa su default). Hay que omitirlo en vez de pasar `None`: el backend
+    rechaza el valor `None` explícito (`Unrecognized method argument`).
+
+    Existe porque no todos los proveedores OpenAI-compatibles soportan el
+    default: DeepSeek rechaza `json_schema` con error 400 y necesita
+    `method="function_calling"`.
+    """
+
+    def __init__(self, modelo: Any, method: str | None = None) -> None:
         self._modelo = modelo
+        self._method = method
 
     async def generate(self, *, prompt: str, output_model: type[BaseModel]) -> Any:
         """Pide al modelo una respuesta validable contra `output_model`.
@@ -35,7 +45,9 @@ class GeneradorLangchain:
         hace el agente, que es quien conoce su propio contrato de salida.
         """
         try:
-            estructurado = self._modelo.with_structured_output(output_model)
+            # Solo se pasa `method` si se indicó: el backend rechaza None explícito.
+            extra = {} if self._method is None else {"method": self._method}
+            estructurado = self._modelo.with_structured_output(output_model, **extra)
             return await estructurado.ainvoke(prompt)
         except ErrorLLM:
             raise
