@@ -34,6 +34,8 @@ agente verificador independiente, y cada ítem declara de qué fragmento del doc
 
 ![Flujo de trabajo de NuevaMente](docs/README/infograph/Flujo_de_trabajo_de_NuevaMente.png)
 
+---
+
 ### Pipeline de adaptación
 
 ```mermaid
@@ -265,22 +267,6 @@ Se acepta también la forma larga de cada valor (`"Principiante / Transición de
 
 ---
 
-## Estado
-
-| Componente | Estado |
-|---|---|
-| Contratos tipados (`src/contracts/`) | ✅ 38 pruebas en verde |
-| Configuración y proveedores de LLM | ✅ |
-| Catálogo de errores | ✅ |
-| Verificador de entorno | ✅ |
-| Ingesta y pipeline RAG | 🚧 |
-| Módulo de pedagogía | 🚧 |
-| Grafo de orquestación y verificador | 🚧 |
-| Persistencia en OCI | 🚧 |
-| Interfaz Streamlit | 🚧 |
-
----
-
 ## Roadmap
 
 NuevaMente está diseñada para evolucionar desde un motor de adaptación de documentación técnica
@@ -322,7 +308,16 @@ documento oficial, con página), `[INF]` (inferencia necesaria) o `[PROP]` (prop
 
 ---
 
-## Equipo
+## Equipo NuevaMente
+
+| Integrante | Rol | Funciones principales |
+|---|---|---|
+| Franklin Bonalde [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/franklinbonaldeai/) | 🧭 Integración y arquitectura | Integración del sistema, OCI y despliegue; `app.py` (composition root); resolución de conflictos del grafo |
+| Oscar Serna Prado [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/oscar-hserna/) | 🔍 RAG y grafo | Ingesta, chunking, embeddings, ChromaDB y recuperación; grafo LangGraph; README |
+| Sergio Carey Alegre [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/sergio-enrique-carey-alegre-58b318174/) | 📚 Pedagogía | Motor pedagógico y redactor; adaptación por perfil y nivel; validadores y guardias de red |
+| Marely Cárcamo Quisto [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/marely/) | 🧩 Agentes y orquestación | Supervisor, investigador, crítico/revisor y modificador; ajustes al grafo; README; video (con Ignacio) |
+| Víctor Asencio Espino [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/veasencioespino/) | 🛠️ Calidad y documentación | Generación de informes (PDF/Markdown), QA y verificación |
+| Ignacio Díaz Cuevas [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/id7-rev2213/) | 📋 PM y documentación | Planificación, coordinación y entregables; documentación para la plataforma NoCountry; video (con Marely) |
 
 Grupo 10 · LATAM · Equipo 28 — Programa ONE, Oracle Next Education & Alura.
 
