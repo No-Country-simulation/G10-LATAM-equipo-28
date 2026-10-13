@@ -176,6 +176,7 @@ pytest tests/ -q            # pruebas
 
 ```
 .
+├── AGENTS.md               guía operativa para agentes
 ├── CLAUDE.md               memoria del proyecto (decisiones, contrato, reglas)
 ├── app.py                  interfaz Streamlit
 ├── verificar_entorno.py    verificador de entorno
@@ -184,14 +185,15 @@ pytest tests/ -q            # pruebas
 │   ├── llm_provider.py     único archivo que nombra proveedores de LLM
 │   ├── errores.py          catálogo de códigos y contrato de error
 │   ├── contracts/          ⭐ la frontera del sistema — congelado
-│   ├── ingesta/            extracción de PDF, Markdown y texto
-│   ├── rag/                chunking, embeddings, vector store, recuperación
+│   ├── agent_state.py      estado compartido del grafo
+│   ├── grafo.py            grafo LangGraph y sus nodos
+│   ├── agentes/            los 5 agentes del flujo
 │   ├── pedagogia/          perfil → parámetros pedagógicos
-│   ├── orquestacion/       grafo LangGraph y sus nodos
 │   ├── prompts/            plantillas, fuera de la lógica
-│   └── persistencia/       OCI Object Storage
-├── notebooks/              pipeline RAG documentada
-├── ejemplos/               ejemplos de ejecución
+│   ├── seguridad/          validación, rate limiting y permisos
+│   ├── servidor_objeStorageOracle.py   servidor MCP de OCI Object Storage
+│   └── Cliente_agemte.py   cliente MCP
+├── notebooks/              pipeline documentada (01–04)
 ├── tests/
 └── docs/                   especificación funcional y decisiones
 ```
