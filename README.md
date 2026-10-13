@@ -26,13 +26,13 @@ pedagógico y nicho de aplicación. Minutos en lugar de semanas.
 fidelidad verificable a la fuente.** Cada paquete trae un `anclaje_fuente_score` calculado por un
 agente verificador independiente, y cada ítem declara de qué fragmento del documento original salió.
 
-![Creación educativa con inteligencia artificial](docs/README/infograph/Creación_educativa_con_inteligencia_artificial.png)
+![Creación educativa con inteligencia artificial](docs/README/infograph/creacion_educativa_con_inteligencia_artificial.webp)
 
 ---
 
 ## Cómo funciona
 
-![Flujo de trabajo de NuevaMente](docs/README/infograph/Flujo_de_trabajo_de_NuevaMente.png)
+![Flujo de trabajo de NuevaMente](docs/README/infograph/flujo_de_trabajo_de_nuevamente.webp)
 
 ---
 
