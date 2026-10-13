@@ -297,11 +297,18 @@ timeline
 
 | Documento | Contenido |
 |---|---|
-| [`docs/nuevamente-especificacion-funcional.md`](docs/nuevamente-especificacion-funcional.md) | Especificación completa: 52 requisitos MUST, 20 user stories, 63 criterios de aceptación, matriz de trazabilidad |
-| [`docs/02_Decision-gate_v2_RESUELTO.md`](docs/02_Decision-gate_v2_RESUELTO.md) | Las 8 decisiones de producto y los esquemas JSON de cada formato |
-| [`docs/04_Arquitectura-y-plan-de-trabajo.md`](docs/04_Arquitectura-y-plan-de-trabajo.md) | Decisiones técnicas con su justificación |
-| [`docs/05_Arranque-del-equipo.md`](docs/05_Arranque-del-equipo.md) | Prerrequisitos y reparto de trabajo |
-| [`CLAUDE.md`](CLAUDE.md) | Memoria del proyecto |
+| [`docs/nuevamente-especificacion-funcional.md`](docs/nuevamente-especificacion-funcional.md) | Especificación funcional: requisitos MUST, user stories, criterios de aceptación y matriz de trazabilidad |
+| [`docs/02_Decision-gate_v2_RESUELTO.md`](docs/02_Decision-gate_v2_RESUELTO.md) | Decisiones de producto y esquemas JSON de cada formato pedagógico |
+| [`docs/03_Propuesta-Marelys_y_config-LLM.md`](docs/03_Propuesta-Marelys_y_config-LLM.md) | Análisis de la propuesta de producto y configuración intercambiable de LLM |
+| [`docs/04_Arquitectura-y-plan-de-trabajo.md`](docs/04_Arquitectura-y-plan-de-trabajo.md) | Arquitectura y plan de trabajo: decisiones técnicas con su justificación |
+| [`docs/05_Arranque-del-equipo.md`](docs/05_Arranque-del-equipo.md) | Hoja de arranque: prerrequisitos y reparto de trabajo |
+| [`docs/06_explicacion-pedagogica.md`](docs/06_explicacion-pedagogica.md) | Capa de adaptación pedagógica (perfil → parámetros) |
+| [`docs/orquestacion-y-agentes.md`](docs/orquestacion-y-agentes.md) | Carril de orquestación: agentes, grafo LangGraph y HITL |
+| [`docs/integracion_redactor_fase2b.md`](docs/integracion_redactor_fase2b.md) | Integración del redactor al pipeline (fase 2C) |
+| [`docs/seguridad_sprint3.md`](docs/seguridad_sprint3.md) | Seguridad de entrada, red y permisos de herramientas |
+| [`AGENTS.md`](AGENTS.md) | Guía operativa para agentes que trabajan en el repo |
+| [`CLAUDE.md`](CLAUDE.md) | Memoria del proyecto (decisiones, contrato, reglas) |
+| [`CHANGELOG.md`](CHANGELOG.md) | Historial de cambios |
 
 Cada afirmación sobre el Hackathon en esos documentos está etiquetada `[EXP]` (explícito en el
 documento oficial, con página), `[INF]` (inferencia necesaria) o `[PROP]` (propuesta).
