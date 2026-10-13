@@ -1,3 +1,7 @@
+<p align="right" style="float: right;">
+  <img src="docs/README/logo/logo.jpg" width="250" alt="NuevaMente">
+</p>
+
 # 🎓 NuevaMente
 
 **Sistema Inteligente de Adaptación y Generación de Contenido Educativo**
@@ -321,7 +325,7 @@ documento oficial, con página), `[INF]` (inferencia necesaria) o `[PROP]` (prop
 
 | Integrante | Rol | Funciones principales |
 |---|---|---|
-| Franklin Bonalde [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/franklinbonaldeai/) | 🧭 Integración y arquitectura | Integración del sistema, OCI y despliegue; `app.py` (composition root); resolución de conflictos del grafo |
+| Franklin Bonalde [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/franklinbonaldeai/) | 🧭 Arquitectura y pipelines de Python | Integración del sistema, OCI y despliegue; `app.py` (composition root); resolución de conflictos del grafo |
 | Oscar Serna Prado [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/oscar-hserna/) | 🔍 RAG y grafo | Ingesta, chunking, embeddings, ChromaDB y recuperación; grafo LangGraph; README |
 | Sergio Carey Alegre [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/sergio-enrique-carey-alegre-58b318174/) | 📚 Pedagogía | Motor pedagógico y redactor; adaptación por perfil y nivel; validadores y guardias de red |
 | Marely Cárcamo Quisto [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/marely/) | 🧩 Agentes y orquestación | Supervisor, investigador, crítico/revisor y modificador; ajustes al grafo; README; video (con Ignacio) |
