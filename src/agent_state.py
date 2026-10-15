@@ -10,7 +10,7 @@ de acumulación que no son mensajes).
 from __future__ import annotations
 
 import operator
-from typing import Annotated, Optional, TypedDict
+from typing import Annotated, Any, NotRequired, Optional, TypedDict
 
 from langgraph.graph.message import add_messages
 
@@ -24,6 +24,9 @@ class Metadatos(TypedDict, total=False):
     formato_generado: str
     tiempo_estimado_estudio_minutos: int
     conceptos_clave: list[str]
+    nicho_aplicado: str
+    nivel_detalle_aplicado: str
+    prerrequisitos: list[str]
 
 
 class ContenidoAdaptado(TypedDict, total=False):
@@ -57,12 +60,17 @@ class AgentState(TypedDict):
     thread_id: str  # st.user.email una vez esté OAuth (sección 13)
 
     input_sanitizado: Optional[str]
+    validacion_entrada_ok: NotRequired[Optional[bool]]
 
     # --- Buscador de Documentos (5to spec) ---
     tema_pedido_chat: Optional[str]
     candidatos_documento: list[str]
     objeto_id_confirmado: Optional[str]
     ejecucion_confirmada: bool
+
+    # Datos reales de descargar_documento; no se reconstruyen desde el chat.
+    documento_titulo: NotRequired[Optional[str]]
+    documento_contenido: NotRequired[Optional[str]]
 
     # --- Supervisor (IntencionOut, sección 10) ---
     tema_consulta: Optional[str]  # tema a verificar dentro del documento (Investigador)
@@ -74,6 +82,9 @@ class AgentState(TypedDict):
     # --- Investigador RAG ---
     fuente_confirmada: Optional[bool]
     chunks_fuente_confirmados: Optional[list[str]]
+    # Canal aditivo: ChunkRecuperado.model_dump() o chunks del investigador
+    # con id/texto. Conserva los metadatos originales sin duplicar el DTO RAG.
+    chunks_fuente_estructurados: NotRequired[Optional[list[dict[str, Any]]]]
     mensaje_aclaracion: Optional[str]  # lo que le pregunta al usuario si no matchea
     respuesta_aclaracion_usuario: Optional[str]
 

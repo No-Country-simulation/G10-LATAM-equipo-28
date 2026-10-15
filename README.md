@@ -26,9 +26,17 @@ pedagógico y nicho de aplicación. Minutos en lugar de semanas.
 fidelidad verificable a la fuente.** Cada paquete trae un `anclaje_fuente_score` calculado por un
 agente verificador independiente, y cada ítem declara de qué fragmento del documento original salió.
 
+![Creación educativa con inteligencia artificial](docs/README/infograph/Creación_educativa_con_inteligencia_artificial.png)
+
 ---
 
 ## Cómo funciona
+
+![Flujo de trabajo de NuevaMente](docs/README/infograph/Flujo_de_trabajo_de_NuevaMente.png)
+
+---
+
+### Pipeline de adaptación
 
 ```mermaid
 flowchart TD
@@ -89,13 +97,20 @@ cambia de nivel cognitivo.
 
 ## Stack
 
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white) ![LangGraph](https://img.shields.io/badge/LangGraph-1.2.11-1C3C3C) ![LangChain](https://img.shields.io/badge/LangChain-1.6.3-1C3C3C) ![ChromaDB](https://img.shields.io/badge/ChromaDB-1.5.9-FFDE57) ![Pydantic](https://img.shields.io/badge/Pydantic-2.13.5-E92063) ![Streamlit](https://img.shields.io/badge/Streamlit-1.38.0%2B-FF4B4B?logo=streamlit&logoColor=white) ![Oracle Cloud](https://img.shields.io/badge/Oracle%20Cloud-OCI%20SDK%202.129.0%2B-F80000?logo=oracle&logoColor=white) ![MCP](https://img.shields.io/badge/MCP-1.30.0-8A2BE2) ![pypdf](https://img.shields.io/badge/pypdf-5.0.0%2B-2C5F2D) ![ReportLab](https://img.shields.io/badge/ReportLab-4.2.0%2B-5A5A5A)
+
 | Capa | Tecnología |
 |---|---|
+| Lenguaje | Python 3.12 |
 | LLM redactor y verificador | Google Gemini (intercambiable por `.env`: Ollama, DeepSeek, Claude, Kimi) |
 | Embeddings | Ollama local (`nomic-embed-text`) |
-| Vector store | ChromaDB, una colección por documento |
+| Framework de agentes y LLM | LangChain |
 | Orquestación | LangGraph |
+| Protocolo de herramientas | MCP (`mcp` + `langchain-mcp-adapters`) |
+| Vector store | ChromaDB, una colección por documento |
 | Validación | Pydantic v2 |
+| Extracción de documentos | pypdf |
+| Exportación PDF / Markdown | ReportLab |
 | Interfaz | Streamlit |
 | Persistencia | **Oracle Cloud Infrastructure — Object Storage, capa Always Free** |
 
@@ -161,6 +176,7 @@ pytest tests/ -q            # pruebas
 
 ```
 .
+├── AGENTS.md               guía operativa para agentes
 ├── CLAUDE.md               memoria del proyecto (decisiones, contrato, reglas)
 ├── app.py                  interfaz Streamlit
 ├── verificar_entorno.py    verificador de entorno
@@ -169,14 +185,15 @@ pytest tests/ -q            # pruebas
 │   ├── llm_provider.py     único archivo que nombra proveedores de LLM
 │   ├── errores.py          catálogo de códigos y contrato de error
 │   ├── contracts/          ⭐ la frontera del sistema — congelado
-│   ├── ingesta/            extracción de PDF, Markdown y texto
-│   ├── rag/                chunking, embeddings, vector store, recuperación
+│   ├── agent_state.py      estado compartido del grafo
+│   ├── grafo.py            grafo LangGraph y sus nodos
+│   ├── agentes/            los 5 agentes del flujo
 │   ├── pedagogia/          perfil → parámetros pedagógicos
-│   ├── orquestacion/       grafo LangGraph y sus nodos
 │   ├── prompts/            plantillas, fuera de la lógica
-│   └── persistencia/       OCI Object Storage
-├── notebooks/              pipeline RAG documentada
-├── ejemplos/               ejemplos de ejecución
+│   ├── seguridad/          validación, rate limiting y permisos
+│   ├── servidor_objeStorageOracle.py   servidor MCP de OCI Object Storage
+│   └── Cliente_agemte.py   cliente MCP
+├── notebooks/              pipeline documentada (01–04)
 ├── tests/
 └── docs/                   especificación funcional y decisiones
 ```
@@ -252,19 +269,29 @@ Se acepta también la forma larga de cada valor (`"Principiante / Transición de
 
 ---
 
-## Estado
+## Roadmap
 
-| Componente | Estado |
-|---|---|
-| Contratos tipados (`src/contracts/`) | ✅ 38 pruebas en verde |
-| Configuración y proveedores de LLM | ✅ |
-| Catálogo de errores | ✅ |
-| Verificador de entorno | ✅ |
-| Ingesta y pipeline RAG | 🚧 |
-| Módulo de pedagogía | 🚧 |
-| Grafo de orquestación y verificador | 🚧 |
-| Persistencia en OCI | 🚧 |
-| Interfaz Streamlit | 🚧 |
+NuevaMente está diseñada para evolucionar desde un motor de adaptación de documentación técnica
+con **fidelidad verificable** hacia una plataforma de capacitación técnica a escala.
+
+| Versión | Horizonte | Enfoque |
+|---|---|---|
+| **1.0** | **Actual** | Motor de adaptación completo: ingesta (PDF · MD · TXT), pipeline RAG, orquestación multi-agente con verificación de fidelidad, salida JSON estructurada, **despliegue en OCI** (Compute + Object Storage, capa Always Free) e interfaz Streamlit. Genera **resultados multimodales**. |
+| **2.0** | **Próximos meses** | Adiciones de implementación inmediata: quiz interactivo con evaluación en tiempo real, exportación multiformato ampliada (CSV compatible con Anki), memoria de adaptaciones y perfiles guardados. |
+| **3.0** | **Un año** | Plataforma de capacitación a escala: perfiles de usuario y administrador, integración con LMS y APIs externas, catálogo de paquetes educativos y analítica de aprendizaje. |
+
+> **Nota:** Las versiones 2.0 y 3.0 describen la evolución proyectada del proyecto; la **versión
+> actual (1.0)** es la que se presenta en el Hackathon.
+
+### Roadmap visual
+
+```mermaid
+timeline
+    title Roadmap NuevaMente
+    v1.0 · ACTUAL : Motor de adaptación : RAG + multi-agente : OCI Compute + Object Storage : Resultados multimodales
+    v2.0 · PRÓXIMOS MESES : Quiz en tiempo real : Exportación multiformato : Memoria de adaptaciones : Perfiles guardados
+    v3.0 · UN AÑO : Plataforma a escala : Usuarios y administrador : Integración LMS : Analítica de aprendizaje
+```
 
 ---
 
@@ -272,18 +299,34 @@ Se acepta también la forma larga de cada valor (`"Principiante / Transición de
 
 | Documento | Contenido |
 |---|---|
-| [`docs/nuevamente-especificacion-funcional.md`](docs/nuevamente-especificacion-funcional.md) | Especificación completa: 52 requisitos MUST, 20 user stories, 63 criterios de aceptación, matriz de trazabilidad |
-| [`docs/02_Decision-gate_v2_RESUELTO.md`](docs/02_Decision-gate_v2_RESUELTO.md) | Las 8 decisiones de producto y los esquemas JSON de cada formato |
-| [`docs/04_Arquitectura-y-plan-de-trabajo.md`](docs/04_Arquitectura-y-plan-de-trabajo.md) | Decisiones técnicas con su justificación |
-| [`docs/05_Arranque-del-equipo.md`](docs/05_Arranque-del-equipo.md) | Prerrequisitos y reparto de trabajo |
-| [`CLAUDE.md`](CLAUDE.md) | Memoria del proyecto |
+| [`docs/nuevamente-especificacion-funcional.md`](docs/nuevamente-especificacion-funcional.md) | Especificación funcional: requisitos MUST, user stories, criterios de aceptación y matriz de trazabilidad |
+| [`docs/02_Decision-gate_v2_RESUELTO.md`](docs/02_Decision-gate_v2_RESUELTO.md) | Decisiones de producto y esquemas JSON de cada formato pedagógico |
+| [`docs/03_Propuesta-Marelys_y_config-LLM.md`](docs/03_Propuesta-Marelys_y_config-LLM.md) | Análisis de la propuesta de producto y configuración intercambiable de LLM |
+| [`docs/04_Arquitectura-y-plan-de-trabajo.md`](docs/04_Arquitectura-y-plan-de-trabajo.md) | Arquitectura y plan de trabajo: decisiones técnicas con su justificación |
+| [`docs/05_Arranque-del-equipo.md`](docs/05_Arranque-del-equipo.md) | Hoja de arranque: prerrequisitos y reparto de trabajo |
+| [`docs/06_explicacion-pedagogica.md`](docs/06_explicacion-pedagogica.md) | Capa de adaptación pedagógica (perfil → parámetros) |
+| [`docs/orquestacion-y-agentes.md`](docs/orquestacion-y-agentes.md) | Carril de orquestación: agentes, grafo LangGraph y HITL |
+| [`docs/integracion_redactor_fase2b.md`](docs/integracion_redactor_fase2b.md) | Integración del redactor al pipeline (fase 2C) |
+| [`docs/seguridad_sprint3.md`](docs/seguridad_sprint3.md) | Seguridad de entrada, red y permisos de herramientas |
+| [`AGENTS.md`](AGENTS.md) | Guía operativa para agentes que trabajan en el repo |
+| [`CLAUDE.md`](CLAUDE.md) | Memoria del proyecto (decisiones, contrato, reglas) |
+| [`CHANGELOG.md`](CHANGELOG.md) | Historial de cambios |
 
 Cada afirmación sobre el Hackathon en esos documentos está etiquetada `[EXP]` (explícito en el
 documento oficial, con página), `[INF]` (inferencia necesaria) o `[PROP]` (propuesta).
 
 ---
 
-## Equipo
+## Equipo NuevaMente
+
+| Integrante | Rol | Funciones principales |
+|---|---|---|
+| Franklin Bonalde [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/franklinbonaldeai/) | 🧭 Integración y arquitectura | Integración del sistema, OCI y despliegue; `app.py` (composition root); resolución de conflictos del grafo |
+| Oscar Serna Prado [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/oscar-hserna/) | 🔍 RAG y grafo | Ingesta, chunking, embeddings, ChromaDB y recuperación; grafo LangGraph; README |
+| Sergio Carey Alegre [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/sergio-enrique-carey-alegre-58b318174/) | 📚 Pedagogía | Motor pedagógico y redactor; adaptación por perfil y nivel; validadores y guardias de red |
+| Marely Cárcamo Quisto [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/marely/) | 🧩 Agentes y orquestación | Supervisor, investigador, crítico/revisor y modificador; ajustes al grafo; README; video (con Ignacio) |
+| Víctor Asencio Espino [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/veasencioespino/) | 🛠️ Calidad y documentación | Generación de informes (PDF/Markdown), QA y verificación |
+| Ignacio Díaz Cuevas [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/id7-rev2213/) | 📋 PM y documentación | Planificación, coordinación y entregables; documentación para la plataforma NoCountry; video (con Marely) |
 
 Grupo 10 · LATAM · Equipo 28 — Programa ONE, Oracle Next Education & Alura.
 

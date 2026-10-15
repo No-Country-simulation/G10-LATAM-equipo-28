@@ -30,3 +30,6 @@ data/uploads/
 Thumbs.db
 .vscode/
 .idea/
+.env
+
+desktop.ini

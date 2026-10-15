@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "formato": "Flashcards",
+  "nombre": "Flashcards de Memorización",
+  "campos_obligatorios": [
+    "anclaje",
+    "frente",
+    "dorso",
+    "pista_didactica"
+  ],
+  "campos_opcionales": [],
+  "reglas": [
+    "El frente contiene una pregunta o concepto.",
+    "El dorso contiene la respuesta o explicación.",
+    "La pista didáctica facilita la retención sin añadir hechos externos."
+  ],
+  "fuente": "docs/02_Decision-gate_v2_RESUELTO.md §2.1; src/contracts/formatos.py"
+}
