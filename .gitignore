@@ -32,3 +32,6 @@ checkpoints.sqlite*
 Thumbs.db
 .vscode/
 .idea/
+.env
+
+desktop.ini
