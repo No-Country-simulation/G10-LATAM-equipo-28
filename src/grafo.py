@@ -10,7 +10,7 @@ validacion_entrada_inicial -> buscador_documentos -> confirmar_ejecucion (HITL)
    -> guardado_final -> confirmar_modificacion]* -> END
 
 Nodos REALES (llaman a OCI vía Cliente_agemte.py, ya validado):
-  - buscador_documentos, ingesta (descarga), guardado_final
+  - buscador_documentos, ingesta (descarga + indexado en el RAG), guardado_final
 
 Nodos con LLM real:
   - supervisor (agentes/supervisor.py, IntencionOut vía Groq)
@@ -18,7 +18,7 @@ Nodos con LLM real:
   - critico_revisor (agentes/critico_revisor.py, formato + fidelidad cualitativa)
   - modificador (agentes/modificador.py, cambio puntual sobre lo aprobado)
   - investigador (agentes/investigador.py) -- real solo si se inyecta un
-    recuperador; por defecto sigue el stub porque rag/ (Chroma) no está en dev
+    recuperador (RecuperadorRAG); por defecto sigue el stub
 
 Nodos de validación determinística:
   - validacion_entrada_inicial antes de cualquier llamada a MCP
@@ -43,6 +43,7 @@ poco probable que aparezca igual en producción (Linux).
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 
@@ -72,6 +73,8 @@ from src.seguridad.validadores import (
     validar_solicitud_adaptacion,
     validar_tema_consulta,
 )
+from src.rag.errores import ErrorRAG
+from src.rag.indexacion import calcular_document_id, indexar_documento
 
 PREFIJO_FUENTES = "fuentes/"
 MAX_REINTENTOS_REDACTOR = 2
@@ -195,14 +198,29 @@ async def nodo_ingesta(state: AgentState) -> dict:
 
     documento = await con_reintento_mcp(_descargar)
 
-    # TODO (rag/ pendiente): chunking + embeddings (HuggingFace multilingual-e5-base)
-    # + indexado en Chroma (colección documento_activo, umbral 0.78).
+    # Indexa el documento en el RAG: normaliza, corta en chunks, calcula los
+    # embeddings (e5) y los guarda en Chroma. Es la pieza que faltaba para que
+    # el Investigador busque de verdad (antes corría en stub). `indexar_documento`
+    # es síncrono y pesado (HuggingFace + Chroma), así que va en un hilo aparte
+    # para no congelar el event loop. Si el documento ya estaba indexado con la
+    # misma configuración, no vuelve a gastar cuota (D-07).
+    texto = documento["texto_extraido"]
+    document_id = calcular_document_id(texto)
+    try:
+        await asyncio.to_thread(indexar_documento, document_id, texto)
+    except ErrorRAG as exc:
+        return {
+            "validacion_entrada_ok": False,
+            "status": "error",
+            "error": exc.mensaje,
+        }
+
     # Conserva la fuente real para SolicitudAdaptacion. Invalida evidencia de
     # una ejecución anterior; RAG/Investigador deben confirmar la nueva fuente.
     return {
-        "estado": "ingesta_completada",
         "documento_titulo": documento["nombre"],
-        "documento_contenido": documento["texto_extraido"],
+        "documento_contenido": texto,
+        "document_id": document_id,
         "chunks_fuente_estructurados": None,
         "fuente_confirmada": None,
     }
@@ -464,9 +482,11 @@ async def construir_grafo(
     construir_modificador: factory(rate_limiter) -> nodo del Modificador (mismo
     patrón). El default usa el núcleo real con la pedagogía y el validador de
     solicitud del Redactor.
-    recuperador: vector store (rag/vectorstore.py). Si se pasa, el nodo
-    Investigador real reemplaza al stub; si no, se mantiene el stub porque
-    rag/ (Chroma) todavía no está en dev.
+    recuperador: implementa el protocolo `Recuperador` (`buscar(consulta, top_k)`).
+    En producción es un `RecuperadorRAG` (src/agentes/recuperador_rag.py), que
+    conecta `rag.recuperacion.recuperar()` con el nodo Investigador real; el
+    nodo le pasa el `document_id` que dejó la Ingesta. Si no se pasa, se
+    mantiene el stub del Investigador (útil en pruebas que no tocan Chroma).
     """
     if rate_limiter is None:
         rate_limiter = RateLimiter()

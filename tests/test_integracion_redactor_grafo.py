@@ -149,6 +149,9 @@ def _ejecutar_grafo(monkeypatch, *, salida=None, formato="Flashcards", stub=Fals
     monkeypatch.setattr(grafo, "conectar_mcp", conectar)
     monkeypatch.setattr(grafo, "obtener_tools_langchain", tools)
     monkeypatch.setattr(grafo.aiosqlite, "connect", sqlite_memoria)
+    # El nodo Ingesta ahora indexa en el RAG real. Aquí no hay modelo de
+    # embeddings ni red, así que se reemplaza por un doble que no hace nada.
+    monkeypatch.setattr(grafo, "indexar_documento", lambda document_id, texto: 1)
     if not stub:
         monkeypatch.setattr(grafo, "nodo_investigador", investigador)
 

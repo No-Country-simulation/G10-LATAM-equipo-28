@@ -71,6 +71,10 @@ class AgentState(TypedDict):
     # Datos reales de descargar_documento; no se reconstruyen desde el chat.
     documento_titulo: NotRequired[Optional[str]]
     documento_contenido: NotRequired[Optional[str]]
+    # Identidad del documento en el índice vectorial (SHA-256 corto de su texto,
+    # ver `rag.indexacion.calcular_document_id`). El Investigador la usa para
+    # saber en qué documento buscar; la escribe el nodo Ingesta.
+    document_id: NotRequired[Optional[str]]
 
     # --- Supervisor (IntencionOut, sección 10) ---
     tema_consulta: Optional[str]  # tema a verificar dentro del documento (Investigador)
