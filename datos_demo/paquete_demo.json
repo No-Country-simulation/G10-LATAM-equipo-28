@@ -1,0 +1,21 @@
+﻿{
+  "materia": "Fundamentos de Infraestructura y Cloud Storage",
+  "nivel": "Intermedio",
+  "documento_origen": "doc3_oci_storage.pdf",
+  "score_fidelidad": 0.96,
+  "resumen": "Object Storage en OCI proporciona una plataforma de almacenamiento de objetos altamente escalable, segura y duradera. Permite gestionar grandes volumenes de datos no estructurados con redundancia automatica entre dominios de disponibilidad.",
+  "preguntas": [
+    {
+      "pregunta": "Como garantiza el Object Storage la durabilidad de los datos almacenados?",
+      "respuesta": "Mediante la dispersion automatica y redundante de datos en multiples servidores y dominios de fallos, junto con verificaciones de integridad continuas (checksums)."
+    },
+    {
+      "pregunta": "Que mecanismo permite automatizar la retencion o eliminacion de objetos antiguos?",
+      "respuesta": "Las politicas de ciclo de vida (Lifecycle Policies), que permiten archivar o purgar objetos segun reglas temporales predefinidas."
+    }
+  ],
+  "citas_anclaje": [
+    "Object Storage es un servicio de almacenamiento escalable y de alta durabilidad con redundancia en multiples dominios.",
+    "Compatible con politicas de ciclo de vida, cifrado en reposo y acceso mediante API REST."
+  ]
+}
