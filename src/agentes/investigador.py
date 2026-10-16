@@ -73,6 +73,14 @@ def construir_nodo_investigador(
     async def nodo_investigador(state: AgentState) -> dict:
         tema = state.get("tema_consulta") or state.get("tema_pedido_chat") or ""
         titulo = state.get("documento_titulo") or ""
+
+        # Ata el recuperador al documento activo del estado, si lo soporta.
+        # El `RecuperadorRAG` real necesita el `document_id` para saber en qué
+        # colección de Chroma buscar; los dobles de prueba no lo implementan.
+        fijar_documento = getattr(recuperador, "fijar_documento", None)
+        if callable(fijar_documento):
+            fijar_documento(state.get("document_id"))
+
         try:
             resultado = await investigar(
                 tema,
