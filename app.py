@@ -43,8 +43,8 @@ logger = logging.getLogger("nuevamente.app")
 
 import streamlit as st
 from langgraph.types import Command
-from rag.vectorstore import buscar_chunks_con_id, indexar_documento, calcular_anclaje
 
+from agentes.recuperador_rag import RecuperadorRAG
 from grafo import construir_grafo
 # Nota: el módulo se llama Cliente_agemte (typo histórico); no renombrar el import
 # hasta que el archivo fuente se renombre de forma coordinada.
@@ -650,9 +650,7 @@ async def _construir_grafo_app():
         st.session_state.rate_limiter = RateLimiter()
     return await construir_grafo(
         rate_limiter=st.session_state.rate_limiter,
-        buscar_chunks=buscar_chunks_con_id,
-        indexar_documento=indexar_documento,
-        calcular_anclaje=calcular_anclaje,
+        recuperador=RecuperadorRAG(),
     )
 
 
