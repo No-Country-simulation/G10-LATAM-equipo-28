@@ -341,3 +341,9 @@ Grupo 10 · LATAM · Equipo 28 — Programa ONE, Oracle Next Education & Alura.
 
 Proyecto académico desarrollado en el marco del Programa ONE. Uso exclusivo de servicios de la
 capa Always Free de Oracle Cloud Infrastructure.
+
+
+## 📄 Carril de Informes y Adición Multiformato
+- **Responsable:** Víctor Asencio (`feature/victor-calidad`)
+- **Funcionalidad:** Generación dinámica de reportes en **PDF** (maquetado con ReportLab e indicadores RAG) y **Markdown** estructurado.
+- **Documentación detallada:** Consulta [docs/MODULO_INFORMES.md](docs/MODULO_INFORMES.md).
