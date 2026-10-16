@@ -43,43 +43,51 @@ agente verificador independiente, y cada ítem declara de qué fragmento del doc
 ### Pipeline de adaptación
 
 ```mermaid
-flowchart TD
-    A[Autor carga documento<br/>PDF · MD · TXT] --> B{Validar formato<br/>y tamaño}
-    A2[Sistema externo:<br/>texto embebido] --> B
-    B -->|inválido| ERR[Error tipificado<br/>mensaje amigable]
-    B -->|válido| C[Extraer texto<br/>+ normalizar<br/>+ document_id]
+flowchart TB
+    %% --- BLOQUE 1 · Entrada y permiso ---
+    subgraph B1["1 · Entrada y permiso"]
+        direction TB
+        I([Inicio]) --> V0{Validar entrada}
+        V0 -->|inválida| ERR[Error tipificado]
+        V0 -->|ok| BUSC[Buscador de documentos<br/>OCI · prefijo fuentes/]
+        BUSC --> H1{{HITL · ¿Ejecutar?}}
+        H1 -->|cancela| FIN([Fin])
+    end
 
-    C --> D[(OCI Object Storage<br/>documento original)]
-    C --> E{¿Índice existe<br/>para este documento?}
+    %% --- BLOQUE 2 · Comprensión (RAG) ---
+    subgraph B2["2 · Comprensión (RAG)"]
+        direction TB
+        ING[Ingesta<br/>descarga + indexa en el RAG] --> V1{Validar documento}
+        V1 -->|rechazado| FIN
+        V1 -->|ok| SUP[Supervisor<br/>clasifica la intención]
+        SUP --> V2{Validar solicitud}
+        V2 -->|rechazado| FIN
+        V2 -->|ok| INV[Investigador<br/>recupera chunks del RAG]
+        INV -->|sin cobertura| H2{{HITL · Aclaración}}
+        H2 --> FIN
+    end
 
-    E -->|sí| G[Recuperar chunks<br/>top_k = 5]
-    E -->|no| F[Chunking → Embeddings<br/>→ ChromaDB]
-    F --> G
+    %% --- BLOQUE 3 · Generación y revisión ---
+    subgraph B3["3 · Generación y revisión"]
+        direction TB
+        RED[Redactor pedagógico<br/>perfil · formato · nivel] --> REV{Crítico/Revisor<br/>fidelidad + claridad}
+        REV -->|reintento| RED
+        REV -->|aprobado| GUA[(Guardado final<br/>JSON del paquete en OCI)]
+        GUA --> H3{{HITL · ¿Modificar?}}
+        H3 -->|listo| FIN
+        H3 -->|pide un cambio| MOD[Modificador]
+        MOD --> REV
+    end
 
-    P[Perfil · Formato<br/>Nicho · Nivel detalle] --> PED[Módulo pedagogía<br/>Bloom · Andamiaje<br/>Registro · Foco]
-    PED --> H
+    %% --- Conexiones entre bloques ---
+    H1 -->|confirmado| ING
+    INV -->|cobertura| RED
 
-    G --> H[NODO PLANIFICADOR<br/>estructura del paquete]
-    H --> I[NODO REDACTOR<br/>few-shot + role prompting]
-    I --> J[NODO VERIFICADOR<br/>afirmaciones vs chunks]
-
-    J --> K{anclaje_fuente_score<br/>≥ 0.80?}
-    K -->|no · 1er intento| I
-    K -->|no · 2do intento| L[Marcar:<br/>requiere revisión]
-    K -->|sí| M[Validar contra<br/>esquema Pydantic]
-    L --> M
-
-    M --> N[(OCI Object Storage<br/>JSON del paquete)]
-    N -->|falla| O[status_upload: fallido<br/>exito_con_advertencias]
-    N -->|ok| Q[status: exito]
-    O --> R[Respuesta JSON<br/>+ render en Streamlit]
-    Q --> R
-
-    style D fill:#2d3748,color:#fff
-    style N fill:#2d3748,color:#fff
-    style J fill:#553c9a,color:#fff
-    style PED fill:#2a4365,color:#fff
-    style K fill:#744210,color:#fff
+    style H1 fill:#744210,color:#fff
+    style H2 fill:#744210,color:#fff
+    style H3 fill:#744210,color:#fff
+    style GUA fill:#2d3748,color:#fff
+    style REV fill:#553c9a,color:#fff
 ```
 
 ### Las tres piezas que lo distinguen
