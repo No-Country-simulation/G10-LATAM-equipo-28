@@ -106,8 +106,8 @@ cambia de nivel cognitivo.
 | Capa | Tecnología |
 |---|---|
 | Lenguaje | Python 3.12 |
-| LLM redactor y verificador | Google Gemini (intercambiable por `.env`: Ollama, DeepSeek, Claude, Kimi) |
-| Embeddings | Ollama local (`nomic-embed-text`) |
+| LLM de los agentes | **Groq** — cascada `openai/gpt-oss-120b` → `openai/gpt-oss-20b` → `qwen/qwen3.8-27b`, con fallback por cupo |
+| Embeddings | **Hugging Face** `intfloat/multilingual-e5-base` (API `hf-inference`, 768 dimensiones) |
 | Framework de agentes y LLM | LangChain |
 | Orquestación | LangGraph |
 | Protocolo de herramientas | MCP (`mcp` + `langchain-mcp-adapters`) |
@@ -118,8 +118,10 @@ cambia de nivel cognitivo.
 | Interfaz | Streamlit |
 | Persistencia | **Oracle Cloud Infrastructure — Object Storage, capa Always Free** |
 
-Ningún archivo del proyecto nombra un proveedor de LLM salvo `src/llm_provider.py`. Cambiar de
-proveedor es cambiar una línea del `.env`.
+Hay dos factories de LLM. `src/seguridad/llm_client.py` es la que usan los **agentes del grafo**
+(hoy Groq, con cascada de modelos y fallback por cupo real). `src/llm_provider.py` es la
+intercambiable por `.env` (Gemini, DeepSeek, Claude, Ollama, Kimi) que usan scripts y notebooks.
+Ningún otro archivo del proyecto nombra un proveedor.
 
 ---
 
@@ -128,9 +130,11 @@ proveedor es cambiar una línea del `.env`.
 ### Requisitos
 
 - Python 3.11 o superior
-- [Ollama](https://ollama.com/download) — para los embeddings locales
 - Una cuenta de Oracle Cloud con un bucket de Object Storage en la capa Always Free
-- Una clave de API de Google Gemini ([aistudio.google.com/apikey](https://aistudio.google.com/apikey))
+- Un **token de Hugging Face** (`HF_TOKEN`) — embeddings e5 del RAG ([huggingface.co/settings/tokens](https://huggingface.co/settings/tokens))
+- Una **clave de Groq** (`GROQ_API_KEY`) — agentes del grafo ([console.groq.com/keys](https://console.groq.com/keys))
+- *(Opcional)* una clave de Gemini u otro proveedor, si usas `llm_provider.py` ([aistudio.google.com/apikey](https://aistudio.google.com/apikey))
+- *(Opcional)* [Ollama](https://ollama.com/download), solo si prefieres embeddings locales por `llm_provider.py`
 
 ### Pasos
 
@@ -146,18 +150,15 @@ source .venv/bin/activate          # Windows:  .venv\Scripts\activate
 # 3. Dependencias
 pip install -r requirements.txt
 
-# 4. Modelo de embeddings local
-ollama pull nomic-embed-text
-
-# 5. Configuración
+# 4. Configuración
 cp .env.example .env               # Windows:  copy .env.example .env
-#    Abrir .env y completar: GEMINI_API_KEY, OCI_BUCKET_NAME, OCI_NAMESPACE
+#    Abrir .env y completar: HF_TOKEN, GROQ_API_KEY, OCI_BUCKET_NAME, OCI_NAMESPACE
 
-# 6. Credenciales de OCI
+# 5. Credenciales de OCI
 #    Consola OCI → Perfil → My profile → API keys → Add API key
 #    Guardar el bloque de configuración en ~/.oci/config
 
-# 7. Verificar que todo quedó bien
+# 6. Verificar que todo quedó bien
 python verificar_entorno.py
 ```
 
