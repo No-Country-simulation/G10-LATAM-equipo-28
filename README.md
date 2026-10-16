@@ -1,3 +1,7 @@
+<p align="right" style="float: right;">
+  <img src="docs/README/logo/logo.jpg" width="250" alt="NuevaMente">
+</p>
+
 # 🎓 NuevaMente
 
 **Sistema Inteligente de Adaptación y Generación de Contenido Educativo**
@@ -26,13 +30,13 @@ pedagógico y nicho de aplicación. Minutos en lugar de semanas.
 fidelidad verificable a la fuente.** Cada paquete trae un `anclaje_fuente_score` calculado por un
 agente verificador independiente, y cada ítem declara de qué fragmento del documento original salió.
 
-![Creación educativa con inteligencia artificial](docs/README/infograph/Creación_educativa_con_inteligencia_artificial.png)
+![Creación educativa con inteligencia artificial](docs/README/infograph/creacion_educativa_con_inteligencia_artificial.webp)
 
 ---
 
 ## Cómo funciona
 
-![Flujo de trabajo de NuevaMente](docs/README/infograph/Flujo_de_trabajo_de_NuevaMente.png)
+![Flujo de trabajo de NuevaMente](docs/README/infograph/flujo_de_trabajo_de_nuevamente.webp)
 
 ---
 
@@ -102,8 +106,8 @@ cambia de nivel cognitivo.
 | Capa | Tecnología |
 |---|---|
 | Lenguaje | Python 3.12 |
-| LLM redactor y verificador | Google Gemini (intercambiable por `.env`: Ollama, DeepSeek, Claude, Kimi) |
-| Embeddings | Ollama local (`nomic-embed-text`) |
+| LLM de los agentes | **Groq** — cascada `openai/gpt-oss-120b` → `openai/gpt-oss-20b` → `qwen/qwen3.8-27b`, con fallback por cupo |
+| Embeddings | **Hugging Face** `intfloat/multilingual-e5-base` (API `hf-inference`, 768 dimensiones) |
 | Framework de agentes y LLM | LangChain |
 | Orquestación | LangGraph |
 | Protocolo de herramientas | MCP (`mcp` + `langchain-mcp-adapters`) |
@@ -114,8 +118,10 @@ cambia de nivel cognitivo.
 | Interfaz | Streamlit |
 | Persistencia | **Oracle Cloud Infrastructure — Object Storage, capa Always Free** |
 
-Ningún archivo del proyecto nombra un proveedor de LLM salvo `src/llm_provider.py`. Cambiar de
-proveedor es cambiar una línea del `.env`.
+Hay dos factories de LLM. `src/seguridad/llm_client.py` es la que usan los **agentes del grafo**
+(hoy Groq, con cascada de modelos y fallback por cupo real). `src/llm_provider.py` es la
+intercambiable por `.env` (Gemini, DeepSeek, Claude, Ollama, Kimi) que usan scripts y notebooks.
+Ningún otro archivo del proyecto nombra un proveedor.
 
 ---
 
@@ -124,9 +130,11 @@ proveedor es cambiar una línea del `.env`.
 ### Requisitos
 
 - Python 3.11 o superior
-- [Ollama](https://ollama.com/download) — para los embeddings locales
 - Una cuenta de Oracle Cloud con un bucket de Object Storage en la capa Always Free
-- Una clave de API de Google Gemini ([aistudio.google.com/apikey](https://aistudio.google.com/apikey))
+- Un **token de Hugging Face** (`HF_TOKEN`) — embeddings e5 del RAG ([huggingface.co/settings/tokens](https://huggingface.co/settings/tokens))
+- Una **clave de Groq** (`GROQ_API_KEY`) — agentes del grafo ([console.groq.com/keys](https://console.groq.com/keys))
+- *(Opcional)* una clave de Gemini u otro proveedor, si usas `llm_provider.py` ([aistudio.google.com/apikey](https://aistudio.google.com/apikey))
+- *(Opcional)* [Ollama](https://ollama.com/download), solo si prefieres embeddings locales por `llm_provider.py`
 
 ### Pasos
 
@@ -142,18 +150,15 @@ source .venv/bin/activate          # Windows:  .venv\Scripts\activate
 # 3. Dependencias
 pip install -r requirements.txt
 
-# 4. Modelo de embeddings local
-ollama pull nomic-embed-text
-
-# 5. Configuración
+# 4. Configuración
 cp .env.example .env               # Windows:  copy .env.example .env
-#    Abrir .env y completar: GEMINI_API_KEY, OCI_BUCKET_NAME, OCI_NAMESPACE
+#    Abrir .env y completar: HF_TOKEN, GROQ_API_KEY, OCI_BUCKET_NAME, OCI_NAMESPACE
 
-# 6. Credenciales de OCI
+# 5. Credenciales de OCI
 #    Consola OCI → Perfil → My profile → API keys → Add API key
 #    Guardar el bloque de configuración en ~/.oci/config
 
-# 7. Verificar que todo quedó bien
+# 6. Verificar que todo quedó bien
 python verificar_entorno.py
 ```
 
@@ -321,9 +326,9 @@ documento oficial, con página), `[INF]` (inferencia necesaria) o `[PROP]` (prop
 
 | Integrante | Rol | Funciones principales |
 |---|---|---|
-| Franklin Bonalde [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/franklinbonaldeai/) | 🧭 Integración y arquitectura | Integración del sistema, OCI y despliegue; `app.py` (composition root); resolución de conflictos del grafo |
+| Franklin Bonalde [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/franklinbonaldeai/) | 🧭 Arquitectura y pipelines de Python | Integración del sistema, OCI y despliegue; `app.py` (composition root); resolución de conflictos del grafo |
 | Oscar Serna Prado [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/oscar-hserna/) | 🔍 RAG y grafo | Ingesta, chunking, embeddings, ChromaDB y recuperación; grafo LangGraph; README |
-| Sergio Carey Alegre [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/sergio-enrique-carey-alegre-58b318174/) | 📚 Pedagogía | Motor pedagógico y redactor; adaptación por perfil y nivel; validadores y guardias de red |
+| Sergio Carey Alegre [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/sergio-enrique-carey-alegre-58b318174/) | 📚 Pedagogía | Adaptación pedagógica por perfil y nivel, implementación e integración del Redactor con el grafo, validación de entrada, guardia de red y privilegios mínimos. |
 | Marely Cárcamo Quisto [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/marely/) | 🧩 Agentes y orquestación | Supervisor, investigador, crítico/revisor y modificador; ajustes al grafo; README; video (con Ignacio) |
 | Víctor Asencio Espino [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/veasencioespino/) | 🛠️ Calidad y documentación | Generación de informes (PDF/Markdown), QA y verificación |
 | Ignacio Díaz Cuevas [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/id7-rev2213/) | 📋 PM y documentación | Planificación, coordinación y entregables; documentación para la plataforma NoCountry; video (con Marely) |
