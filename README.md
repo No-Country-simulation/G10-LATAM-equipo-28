@@ -206,7 +206,7 @@ pytest tests/ -q            # pruebas
 │   ├── seguridad/          validación, rate limiting y permisos
 │   ├── servidor_objeStorageOracle.py   servidor MCP de OCI Object Storage
 │   └── Cliente_agemte.py   cliente MCP
-├── notebooks/              pipeline documentada (01–04)
+├── notebooks/              pipeline documentada (01–05)
 ├── tests/
 └── docs/                   especificación funcional y decisiones
 ```
