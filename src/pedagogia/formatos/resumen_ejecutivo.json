@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "formato": "Resumen Ejecutivo",
+  "nombre": "Resumen Ejecutivo (TL;DR)",
+  "campos_obligatorios": [
+    "anclaje",
+    "punto_clave",
+    "implicacion",
+    "relevancia_negocio"
+  ],
+  "campos_opcionales": [],
+  "reglas": [
+    "El punto clave expresa el hecho técnico en una frase.",
+    "La implicación explica qué significa en la práctica.",
+    "La relevancia de negocio explica por qué importa a quien decide presupuesto.",
+    "Los tres campos conservan la secuencia hecho, consecuencia y valor."
+  ],
+  "fuente": "docs/02_Decision-gate_v2_RESUELTO.md §2.3; src/contracts/formatos.py"
+}

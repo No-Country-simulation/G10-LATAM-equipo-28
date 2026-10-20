@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "formato": "Quiz",
+  "nombre": "Quiz Interactivo con Justificaciones",
+  "campos_obligatorios": [
+    "anclaje",
+    "pregunta",
+    "opciones",
+    "respuesta_correcta",
+    "justificacion"
+  ],
+  "campos_opcionales": [
+    "analisis_distractores"
+  ],
+  "reglas": [
+    "Cada pregunta plantea una sola idea.",
+    "Las opciones contienen entre 3 y 5 alternativas con identificadores en minúscula.",
+    "La respuesta correcta coincide con el identificador de una opción.",
+    "La justificación explica por qué la respuesta es correcta.",
+    "El análisis de distractores, cuando existe, explica por qué fallan las demás opciones."
+  ],
+  "fuente": "docs/02_Decision-gate_v2_RESUELTO.md §2.4; src/contracts/formatos.py"
+}
