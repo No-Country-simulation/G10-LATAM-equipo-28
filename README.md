@@ -338,15 +338,8 @@ documento oficial, con página), `[INF]` (inferencia necesaria) o `[PROP]` (prop
 | Oscar Serna Prado [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/oscar-hserna/) | 🔍 RAG y grafo | Ingesta, chunking, embeddings, ChromaDB y recuperación; grafo LangGraph; README |
 | Sergio Carey Alegre [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/sergio-enrique-carey-alegre-58b318174/) | 📚 Pedagogía | Adaptación pedagógica por perfil y nivel, implementación e integración del Redactor con el grafo, validación de entrada, guardia de red y privilegios mínimos. |
 | Marely Cárcamo Quisto [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/marely/) | 🧩 Agentes y orquestación | Supervisor, investigador, crítico/revisor y modificador; ajustes al grafo; README; video (con Ignacio) |
-| Víctor Asencio Espino [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/veasencioespino/) | 🛠️ Calidad y documentación | Generación de informes (PDF/Markdown), QA y verificación |
+| Víctor Asencio Espino [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/veasencioespino/) | 🛠️ Calidad y documentación | Generación dinámica de informes en **PDF** (ReportLab, con indicadores del RAG) y **Markdown** ([detalle del módulo](docs/MODULO_INFORMES.md)); QA y verificación |
 | Ignacio Díaz Cuevas [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/id7-rev2213/) | 📋 PM y documentación | Planificación, coordinación y entregables; documentación para la plataforma NoCountry; video (con Marely) |
-
-### Carril de informes
-
-Además del QA y la verificación, **Víctor Asencio** (`feature/victor-calidad`) construyó la
-generación dinámica de reportes: **PDF** maquetado con ReportLab e indicadores del RAG, y
-**Markdown** estructurado.
-Detalle técnico: [`docs/MODULO_INFORMES.md`](docs/MODULO_INFORMES.md).
 
 Grupo 10 · LATAM · Equipo 28 — Programa ONE, Oracle Next Education & Alura.
 
