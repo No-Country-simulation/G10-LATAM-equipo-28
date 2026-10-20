@@ -4,9 +4,9 @@ Mapa de integración del carril de **orquestación** (Supervisor, Investigador,
 Crítico/Revisor, Modificador, grafo LangGraph y pausas HITL). Base `dev 54c1ab3`;
 se completó con el PR #9 (`feature/marely-orquestacion`) y el PR #10
 (`feature/marely-critico-modificador`, crítico/revisor y modificador reales).
-`dev` = `163bcb1`. Este documento describe el estado real en `dev` y las decisiones
-tomadas al integrar, para que Franklin (integración) y el Investigador/Verificador
-reales se conecten sin adivinar.
+**Estado al 19/10/2026:** `dev` = `63df7e5` (118 commits sobre `main`), con el RAG,
+la ingesta y la fidelidad ya integrados. Este documento describe el estado real en
+`dev` y las decisiones tomadas al integrar.
 
 ## Alcance y estado
 
@@ -18,16 +18,20 @@ reales se conecten sin adivinar.
 - Agentes del carril: **Supervisor** (núcleo + nodo), **Investigador** (núcleo +
   nodo), **Crítico/Revisor** y **Modificador**. El **Redactor** (Sergio) ya está
   conectado como nodo.
-- `pedagogia/`, `seguridad/` (rate limiter, `llm_client` de Franklin), `prompts/`.
-- 224 pruebas en verde.
+- `pedagogia/`, `seguridad/` (`rate_limiter`, `llm_client`, `validadores`,
+  `guardia_red`, `permisos`), `prompts/`.
+- **RAG** (`src/rag/`, Oscar): chunking, embeddings e5 y Chroma. La **ingesta ya
+  indexa** (descarga → indexa) y `document_id` viaja en el estado.
+- **Fidelidad** (`src/fidelidad/`, Oscar): calcula `anclaje_fuente_score`. El
+  Crítico/Revisor expone el puerto `CalculadorFidelidad` para inyectarlo.
+- **`app.py`** (Streamlit + composition root) y el **módulo de informes** (Víctor).
+- 593 pruebas en verde.
 
 **Todavía NO:**
 
-- `rag/` (Chroma) — carril de Oscar. Sin esto no hay `recuperador` real.
-- Integración de `anclaje_fuente_score` (`src/fidelidad/`, carril de Oscar). El
-  Crítico/Revisor ya expone el puerto `CalculadorFidelidad` para enchufarlo.
-- `app.py` (composition root + Streamlit).
-- Validación real (`seguridad/validadores.py`); sigue stub.
+- **Inyectar** el calculador de `anclaje_fuente_score` en el Crítico/Revisor desde
+  `app.py`. El módulo y el puerto existen; falta el cableado. Mientras no se
+  inyecte, el Crítico solo aporta claridad pedagógica y observaciones.
 
 ## Patrón de agente (Decisión A3)
 
@@ -74,12 +78,14 @@ critico_revisor -> guardado_final -> confirmar_modificacion (HITL)
                 -> modificador -> critico_revisor -> ...
 ```
 
-- **Nodos reales**: `buscador_documentos`, `ingesta` (descarga vía MCP), `supervisor`,
+- **Nodos reales**: `buscador_documentos`, `ingesta` (descarga vía MCP **e indexa
+  en el RAG**), `validacion` (valida con `seguridad/validadores.py`), `supervisor`,
   `redactor_pedagogico` (Sergio), `critico_revisor`, `modificador`, `guardado_final`,
   y los HITL.
 - **Nodos reales condicionados**: `investigador` usa el adaptador real **solo si
-  se inyecta un `recuperador`**; si no, mantiene el stub (ver abajo).
-- **Stubs**: `validacion`.
+  se inyecta un `recuperador`**; si no, mantiene el stub (ver abajo). `app.py` ya
+  le pasa `RecuperadorRAG()`.
+- **Stubs**: ninguno en el camino principal.
 
 ### Composición (`construir_grafo`)
 
@@ -109,9 +115,9 @@ async def construir_grafo(
   `factory(rate_limiter) -> nodo`, mismo patrón que el Supervisor. Los defaults usan
   los núcleos reales (`critico_revisor.py`, `modificador.py`); los tests inyectan
   dobles para fijar aprobación/rechazo sin gastar cuota.
-- `recuperador`: vector store (`rag/vectorstore.py`). **Si se pasa**, el nodo
-  Investigador real reemplaza al stub; si no, se conserva el stub. Hoy `rag/` no
-  está en `dev`, así que el default es el stub.
+- `recuperador`: adaptador del RAG (`agentes/recuperador_rag.py`). **Si se pasa**,
+  el Investigador real reemplaza al stub; si no, se conserva el stub (útil en
+  pruebas que no tocan Chroma). `app.py` ya le pasa `RecuperadorRAG()`.
 
 ### Invariante del stub de Investigador
 
@@ -149,19 +155,18 @@ sobre el valor existente, nunca se resetean**. El Redactor solo incrementa
    (`test_grafo_smoke.py`) protege contra el import pelado que dejó `main` roto.
 3. **Aclaración informativa de 1 ronda** (arriba).
 4. **Fix del default de Supervisor** en `construir_grafo` (arriba).
-5. **Investigador real solo con `recuperador` inyectado**; stub por defecto
-   mientras `rag/` no esté en `dev`.
+5. **Investigador real solo con `recuperador` inyectado**; el stub queda como
+   default del grafo para pruebas sin Chroma. `app.py` inyecta `RecuperadorRAG()`.
 
 ## Comprobaciones
 
-- `python -m pytest tests/ -q` → **224 pruebas** en verde (incluye
+- `python -m pytest tests/ -q` → **593 pruebas** en verde (incluye
   `test_agente_supervisor`, `test_nodo_supervisor`, `test_agente_investigador`,
   `test_nodo_investigador`, `test_nodo_aclaracion`, `test_agente_critico_revisor`,
   `test_nodo_critico_revisor`, `test_agente_modificador`, `test_nodo_modificador`,
   `test_grafo_smoke`, `test_integracion_redactor_grafo`).
-- Notebooks: `notebooks/01_supervisor_intencion.ipynb` y
-  `notebooks/02_investigador_cobertura.ipynb` (con generador/recuperador
-  inyectados; opcionales con LLM real si hay `LLM_PROVIDER`).
+- Notebooks: `01` a `05`. El `05_ingesta_rag.ipynb` muestra la ingesta indexando y
+  el adaptador `RecuperadorRAG`. Los de LLM real son opcionales (`LLM_PROVIDER`).
 - Servicios externos (MCP, LLM) sustituidos por dobles en tests. **No** se
   corrieron llamadas reales a OCI ni smoke E2E completo.
 - Entorno local: `verificar_entorno.py` reporta faltantes de máquina (Ollama,
@@ -169,14 +174,13 @@ sobre el valor existente, nunca se resetean**. El Redactor solo incrementa
 
 ## Pendientes y dependencias
 
-- **`rag/` (Oscar, `feature/oscar-rag`)**: habilita un `recuperador` real →
-  `construir_grafo(..., recuperador=...)` enciende el Investigador real.
-- **Verificador / `anclaje_fuente_score` (coordinar con Oscar,
-  `feature/oscar-calidad`)**: `feature/oscar-calidad` ya trae "cascada de coseno +
-  juez LLM". El Crítico/Revisor ya está implementado y expone el puerto
-  `CalculadorFidelidad`; falta decidir el owner e inyectar el calculador, para no
-  duplicar lógica.
-- **Validación**: sigue stub (`seguridad/validadores.py`); definir owner.
-- **`app.py`**: composition root (Streamlit + wiring de `construir_grafo`).
-- **README**: su tabla "Estado" y su sección "Estructura" quedaron desactualizadas
-  frente al código real (`src/grafo.py` + `src/agentes/`, no `src/orquestacion/`).
+- **`rag/`** — ✅ integrado (PR #17). `app.py` inyecta `RecuperadorRAG()`.
+- **Fidelidad** — `src/fidelidad/` está integrado (PR #16) y el Crítico expone el
+  puerto `CalculadorFidelidad`; **falta inyectarlo desde `app.py`** para que el
+  `anclaje_fuente_score` se calcule en cada corrida.
+- **Validación** — ✅ real (`seguridad/validadores.py`).
+- **`app.py`** — ✅ existe (Streamlit + wiring de `construir_grafo`). Arranca en
+  modo demo si faltan `seguridad/auth.py`, `seguridad/cuotas.py` y
+  `render_documento.py`.
+- **README** — ✅ actualizado (PR #19 y #21): stack real, estructura y diagrama
+  fiel al grafo.
