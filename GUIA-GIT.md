@@ -2,6 +2,11 @@
 
 Instrucciones básicas para subir cambios al repositorio del equipo desde Git Bash.
 
+**Flujo del equipo (importante):** cada quien trabaja en su **rama personal**
+(`feature/<nombre>-<tema>`, `fix/<tema>`, `docs/<tema>`) y abre un **Pull Request
+a `dev`**. Los merges a `main` salen de `dev`. **Nunca** se commitea directo a
+`main` ni a `dev`.
+
 ---
 
 ## Cómo hacerlo desde Git Bash
@@ -13,10 +18,11 @@ Opción rápida: en el Explorador de Windows, entra a la carpeta del proyecto, c
 O desde una terminal ya abierta:
 
 ```bash
-cd "/c/Users/racso/Documents/00 - Alura_AI ORACLE/02 - Hackaton NewMind/00 - branch github repositorio/G10-LATAM-equipo-28"
+cd "/c/Users/<tu-usuario>/ruta/al/G10-LATAM-equipo-28"
 ```
 
-(En Git Bash, `C:\` se escribe como `/c/` y se usan `/` no `\`.)
+(En Git Bash, `C:\` se escribe como `/c/` y se usan `/` no `\`. Reemplaza la ruta
+por la de tu propia máquina.)
 
 ### 2. Ver qué cambió
 
@@ -49,38 +55,45 @@ El mensaje debe explicar el *por qué* del cambio, no solo el *qué*.
 git push
 ```
 
-La primera vez en una rama nueva Git te pedirá `git push -u origin nombre-rama` (el `-u` deja esa rama "trackeada" para que después baste con `git push`). Como el `main` ya quedó trackeado, ahora te alcanza con `git push`.
+La primera vez en una rama nueva Git te pedirá `git push -u origin nombre-rama` (el `-u` deja esa rama "trackeada" para que después, en esa misma rama, baste con `git push`).
 
 ### 6. Bajar cambios de otros compañeros
 
 Antes de empezar a trabajar en el día, o antes de un push si otros están comiteando:
 
 ```bash
-git pull
+git checkout dev          # pararte sobre la rama de integración
+git pull                  # traer lo último que el equipo mergeó a dev
 ```
 
-Esto trae los commits del `main` remoto a tu local.
+Esto trae los commits de `dev` a tu local. Si quieres esas novedades en tu rama
+personal, mézclalas desde ahí (`git merge dev` estando en tu rama).
 
 ---
 
 ## Flujo típico del día
 
 ```bash
-git pull                        # traer lo último del equipo
+git checkout dev                 # pararte en la rama de integración
+git pull                         # traer lo último del equipo
+git checkout mi-rama-personal    # volver a tu rama de trabajo
+git merge dev                    # traer las novedades a tu trabajo
 # ...trabajas, editas archivos...
-git status                      # revisar qué cambió
-git add archivo1 archivo2       # marcar lo que quieres subir
-git commit -m "Descripción"     # crear el commit local
-git push                        # enviarlo al remoto
+git status                       # revisar qué cambió
+git add archivo1 archivo2        # marcar lo que quieres subir
+git commit -m "Descripción"      # crear el commit local
+git push                         # subir tu rama personal al remoto
 ```
+
+Después de eso, abres el Pull Request de tu rama personal hacia `dev` en GitHub.
 
 ---
 
 ## Recomendaciones importantes para trabajo en equipo
 
-- **Nunca hagas `push --force` sobre `main`** — puede sobrescribir el trabajo de otros.
+- **Nunca hagas `push --force` sobre `main` ni sobre `dev`** — puede sobrescribir el trabajo de otros.
 - **Haz `git pull` antes de `git push`** — si otro compañero subió algo antes, Git te pedirá integrar sus cambios primero.
-- **Idealmente, no trabajes directo en `main`.** Crea una rama para cada feature:
+- **No trabajes directo en `main` ni en `dev`.** Crea una rama para cada feature:
 
   ```bash
   git checkout -b nombre-de-la-feature   # crear y cambiarte a nueva rama
@@ -88,5 +101,5 @@ git push                        # enviarlo al remoto
   git push -u origin nombre-de-la-feature
   ```
 
-  Luego abres un Pull Request en GitHub para mergear a `main`. Así el equipo puede revisar antes de que entre al `main`.
+  Luego abres un Pull Request en GitHub para mergear a `dev`. Así el equipo puede revisar antes de que entre a `dev`, y de ahí sale el merge a `main`.
 - **Revisa qué estás subiendo** con `git status` y `git diff --staged` antes del commit — evita subir archivos `.env` con contraseñas, tokens, etc.
