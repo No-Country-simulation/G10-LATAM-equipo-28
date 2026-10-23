@@ -10,6 +10,16 @@ Hackathon ONE G10 — Oracle Next Education & Alura · Equipo LATAM 28
 
 ---
 
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=TEasuOWxOiM" target="_blank" rel="noopener">
+    <img src="https://img.youtube.com/vi/TEasuOWxOiM/maxresdefault.jpg" alt="Video de demostración de NuevaMente — ver en YouTube" width="720">
+  </a>
+  <br>
+  <strong>▶️ Ver el video de demostración de NuevaMente</strong>
+</p>
+
+---
+
 ## El problema
 
 Las empresas y escuelas de tecnología producen documentación técnica muy rica, pero a menudo
@@ -21,6 +31,12 @@ Adaptar ese material a mano consume **semanas** de trabajo de especialistas y di
 instruccionales.
 
 ## La solución
+
+<p align="center">
+  <a href="https://nuevamente-app.streamlit.app/" target="_blank" rel="noopener">
+    <img src="https://img.shields.io/badge/🚀_Probar_la_app_en_vivo-NuevaMente_Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Probar la app de NuevaMente en Streamlit" height="56">
+  </a>
+</p>
 
 NuevaMente ingiere documentación técnica (PDF, Markdown o texto) y la convierte automáticamente
 en **paquetes educativos personalizados**, parametrizados por perfil del destinatario, formato
@@ -330,11 +346,26 @@ documento oficial, con página), `[INF]` (inferencia necesaria) o `[PROP]` (prop
 
 ---
 
+## Screenshots
+
+screenshot1.- Actividad en Vivo. Parámetros de entrada  
+![Pantalla de una interfaz de configuración de actividad en vivo con varios campos y opciones para ajustar parámetros educativos. Se muestran formularios y controles de entrada para seleccionar perfil, nivel, objetivos, duración y contexto de aprendizaje. La interfaz aparece sobre un fondo claro de aplicación, con una estructura ordenada y profesional. El tono general es funcional y orientado a la personalización pedagógica. Texto visible en pantalla: Actividad en Vivo, Parámetros de entrada.](docs/README/screenshots/actividad_en_vivo.png)
+
+
+---
+
+
+## Ejemplo documento de salida
+Documento PDF generado por NuevaMente con el contenido adaptado a un perfil de usuario específico. En este caso tenemos como ejemplo un documento de salida en formato PDF que contiene un Quiz, para un perfil de usuario "Principiante" en el nicho de "General", con un nivel de detalle "Didáctico". El documento incluye preguntas y respuestas, pistas didácticas y referencias a los fragmentos del documento original de donde se extrajo la información.
+[Ejemplo de documento de salida](docs/README/export/Ejemplo_documento_salida.pdf)
+
+---
+
 ## Equipo NuevaMente
 
 | Integrante | Rol | Funciones principales |
 |---|---|---|
-| Franklin Bonalde [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/franklinbonaldeai/) | 🧭 Arquitectura y pipelines de Python | Integración del sistema, OCI y despliegue; `app.py` (composition root); resolución de conflictos del grafo |
+| Franklin Bonalde [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/franklinbonaldeai/) | 🧭 Arquitectura y pipelines de Python | OCI y despliegue; `app.py` (composition root); resolución de conflictos del grafo |
 | Oscar Serna Prado [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/oscar-hserna/) | 🔍 RAG y grafo | Ingesta, chunking, embeddings, ChromaDB y recuperación; grafo LangGraph; README |
 | Sergio Carey Alegre [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/sergio-enrique-carey-alegre-58b318174/) | 📚 Pedagogía | Adaptación pedagógica por perfil y nivel, implementación e integración del Redactor con el grafo, validación de entrada, guardia de red y privilegios mínimos. |
 | Marely Cárcamo Quisto [![LinkedIn](https://api.iconify.design/fa6-brands/linkedin.svg?color=%231E3A8A)](https://www.linkedin.com/in/marely/) | 🧩 Agentes y orquestación | Supervisor, investigador, crítico/revisor y modificador; ajustes al grafo; README; video (con Ignacio) |
