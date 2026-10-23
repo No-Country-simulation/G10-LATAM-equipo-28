@@ -228,6 +228,12 @@ streamlit run app.py        # interfaz
 pytest tests/ -q            # pruebas
 ```
 
+> ⚠️ Los dos comandos exigen el **entorno virtual activo** (paso 2). Si aparece
+> `ModuleNotFoundError: No module named 'langgraph'`, no falta la dependencia:
+> estás corriendo con el Python global. Compruébalo con `which python` (Linux/macOS)
+> o `Get-Command python` (Windows): la ruta debe incluir `.venv`.
+> Alternativa sin activar nada: `.venv/Scripts/python.exe -m streamlit run app.py`.
+
 ---
 
 ## Estructura
