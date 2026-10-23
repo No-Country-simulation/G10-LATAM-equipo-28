@@ -389,9 +389,6 @@ Documento PDF generado por NuevaMente con el contenido adaptado a un perfil de u
 [Ejemplo de documento de salida](docs/README/export/Ejemplo_documento_salida.pdf)
 
 ---
-Video explicativo incorporación OCI 
-
----
 
 ## Equipo NuevaMente
 
