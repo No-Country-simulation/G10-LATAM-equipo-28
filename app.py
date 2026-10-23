@@ -34,12 +34,19 @@ import html
 import json
 import logging
 import re
+import sys
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("nuevamente.app")
+
+# Los módulos del proyecto viven en src/ y app.py los importa por nombre pelado
+# (`from grafo import ...`). Insertar src/ acá hace que `streamlit run app.py`
+# funcione desde la raíz del repo, sin configurar PYTHONPATH a mano.
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 import streamlit as st
 from langgraph.types import Command
@@ -49,10 +56,38 @@ from grafo import construir_grafo
 # Nota: el módulo se llama Cliente_agemte (typo histórico); no renombrar el import
 # hasta que el archivo fuente se renombre de forma coordinada.
 from Cliente_agemte import conectar_mcp, obtener_tools_langchain, extraer_texto_resultado
-from seguridad.auth import requerir_login
-from seguridad.cuotas import ErrorCuota, consumir_corrida, corridas_restantes, limite_usuario
+# auth, cuotas y render_documento hoy solo existen en la máquina de Franklin.
+# Si no están, la app arranca en "modo demo": sin login, sin cuotas y con el
+# render propio de este archivo (ver src/arranque_demo.py). Cuando los módulos
+# reales existan, se importan ellos y el respaldo queda inerte.
+try:
+    from seguridad.auth import requerir_login
+    from seguridad.cuotas import (
+        ErrorCuota,
+        consumir_corrida,
+        corridas_restantes,
+        limite_usuario,
+    )
+
+    HAY_LOGIN_REAL = True
+except ImportError:
+    from arranque_demo import (
+        ErrorCuota,
+        consumir_corrida,
+        corridas_restantes,
+        hay_login_real,
+        limite_usuario,
+        requerir_login,
+    )
+
+    HAY_LOGIN_REAL = hay_login_real()
+
 from seguridad.rate_limiter import RateLimiter
-from render_documento import CSS_DOCUMENTO, tipo_documento, html_documento
+
+try:
+    from render_documento import CSS_DOCUMENTO, html_documento, tipo_documento
+except ImportError:
+    from arranque_demo import CSS_DOCUMENTO, html_documento, tipo_documento
 
 st.set_page_config(page_title="NuevaMente", page_icon="🧠", layout="wide")
 st.markdown(f"<style>{CSS_DOCUMENTO}</style>", unsafe_allow_html=True)
@@ -591,7 +626,10 @@ with st.sidebar:
     st.caption(
         f"Corridas disponibles hoy: {corridas_restantes(USUARIO.user_id)} de {limite_usuario()}"
     )
-    st.button("Cerrar sesión", on_click=st.logout, use_container_width=True)
+    if HAY_LOGIN_REAL:
+        st.button("Cerrar sesión", on_click=st.logout, use_container_width=True)
+    else:
+        st.caption("Modo demo: sin login.")
 
 # --------------------------------------------------------------------------
 # Helpers async
