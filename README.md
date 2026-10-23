@@ -123,6 +123,35 @@ cambia de nivel cognitivo.
 
 ---
 
+## Almacenamiento en OCI (requisito del hackathon)
+
+Todos los documentos y artefactos del proyecto viven en **OCI Object Storage**, en la capa
+**Always Free**, a través de un servidor **MCP** propio montado sobre `oci-sdk`
+(`src/servidor_objeStorageOracle.py`) y su cliente (`src/Cliente_agemte.py`). Ningún agente
+accede a OCI directamente: solo los nodos determinísticos de ingesta y guardado final tocan el
+bucket.
+
+| Prefijo del bucket | Qué se guarda |
+|---|---|
+| `fuentes/` | Documentos originales (PDF · Markdown · TXT) |
+| `generados/` | Paquete educativo en JSON, validado contra el contrato |
+| `generados/formateados/` | Salidas formateadas (PDF y Markdown) |
+
+El bucket se configura con `OCI_BUCKET_NAME`. La autenticación usa **Instance Principal** en la
+VM de OCI y `~/.oci/config` en local (`OCI_LOCAL_DEV=1`).
+
+### 🎬 Cómo se conectó NuevaMente con OCI
+
+<p align="center">
+  <a href="https://youtu.be/3EbiY9ZgNK0" target="_blank" rel="noopener">
+    <img src="https://img.youtube.com/vi/3EbiY9ZgNK0/maxresdefault.jpg" alt="Conexión de NuevaMente con OCI Object Storage — video explicativo" width="720">
+  </a>
+  <br>
+  <strong>▶️ Ver: conexión de NuevaMente con OCI</strong>
+</p>
+
+---
+
 ## Stack
 
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white) ![LangGraph](https://img.shields.io/badge/LangGraph-1.2.11-1C3C3C) ![LangChain](https://img.shields.io/badge/LangChain-1.6.3-1C3C3C) ![ChromaDB](https://img.shields.io/badge/ChromaDB-1.5.9-FFDE57) ![Pydantic](https://img.shields.io/badge/Pydantic-2.13.5-E92063) ![Streamlit](https://img.shields.io/badge/Streamlit-1.38.0%2B-FF4B4B?logo=streamlit&logoColor=white) ![Oracle Cloud](https://img.shields.io/badge/Oracle%20Cloud-OCI%20SDK%202.129.0%2B-F80000?logo=oracle&logoColor=white) ![MCP](https://img.shields.io/badge/MCP-1.30.0-8A2BE2) ![pypdf](https://img.shields.io/badge/pypdf-5.0.0%2B-2C5F2D) ![ReportLab](https://img.shields.io/badge/ReportLab-4.2.0%2B-5A5A5A)
@@ -358,6 +387,9 @@ screenshot1.- Actividad en Vivo. Parámetros de entrada
 ## Ejemplo documento de salida
 Documento PDF generado por NuevaMente con el contenido adaptado a un perfil de usuario específico. En este caso tenemos como ejemplo un documento de salida en formato PDF que contiene un Quiz, para un perfil de usuario "Principiante" en el nicho de "General", con un nivel de detalle "Didáctico". El documento incluye preguntas y respuestas, pistas didácticas y referencias a los fragmentos del documento original de donde se extrajo la información.
 [Ejemplo de documento de salida](docs/README/export/Ejemplo_documento_salida.pdf)
+
+---
+Video explicativo incorporación OCI 
 
 ---
 
