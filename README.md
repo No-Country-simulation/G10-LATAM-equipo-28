@@ -372,6 +372,11 @@ timeline
 | [`docs/orquestacion-y-agentes.md`](docs/orquestacion-y-agentes.md) | Carril de orquestación: agentes, grafo LangGraph y HITL |
 | [`docs/integracion_redactor_fase2b.md`](docs/integracion_redactor_fase2b.md) | Integración del redactor al pipeline (fase 2C) |
 | [`docs/seguridad_sprint3.md`](docs/seguridad_sprint3.md) | Seguridad de entrada, red y permisos de herramientas |
+| [`docs/limitaciones-y-alcance.md`](docs/limitaciones-y-alcance.md) | Limitaciones conocidas y alcance declarado: qué no hace hoy, por qué, y cómo verificarlo en el código |
+| [`docs/runbook-operacion.md`](docs/runbook-operacion.md) | Runbook: arranque local, síntomas y soluciones, perillas configurables y despliegue |
+| [`docs/metricas-fidelidad.md`](docs/metricas-fidelidad.md) | Fidelidad verificable: fórmula del score, umbrales y calibración con e5 |
+| [`docs/decisiones.md`](docs/decisiones.md) | Índice de decisiones de arquitectura (D-01 a D-12) con su estado real en el código |
+| [`docs/seguridad-y-datos.md`](docs/seguridad-y-datos.md) | Qué datos toca el sistema, dónde viven, controles implementados y riesgos residuales |
 | [`AGENTS.md`](AGENTS.md) | Guía operativa para agentes que trabajan en el repo |
 | [`CLAUDE.md`](CLAUDE.md) | Memoria del proyecto (decisiones, contrato, reglas) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historial de cambios |
