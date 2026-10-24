@@ -372,6 +372,7 @@ timeline
 | [`docs/orquestacion-y-agentes.md`](docs/orquestacion-y-agentes.md) | Carril de orquestación: agentes, grafo LangGraph y HITL |
 | [`docs/integracion_redactor_fase2b.md`](docs/integracion_redactor_fase2b.md) | Integración del redactor al pipeline (fase 2C) |
 | [`docs/seguridad_sprint3.md`](docs/seguridad_sprint3.md) | Seguridad de entrada, red y permisos de herramientas |
+| [`docs/limitaciones-y-alcance.md`](docs/limitaciones-y-alcance.md) | Limitaciones conocidas y alcance declarado: qué no hace hoy, por qué, y cómo verificarlo en el código |
 | [`AGENTS.md`](AGENTS.md) | Guía operativa para agentes que trabajan en el repo |
 | [`CLAUDE.md`](CLAUDE.md) | Memoria del proyecto (decisiones, contrato, reglas) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historial de cambios |
